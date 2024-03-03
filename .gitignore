@@ -1,0 +1,7 @@
+.cproject
+.mxproject
+.project
+*.ioc
+build
+.vscode
+.vs
