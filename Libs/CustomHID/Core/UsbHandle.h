@@ -2,6 +2,8 @@
 
 #include "usbd_def.h"
 
+#include "UsbEndpoint.h"
+
 typedef struct _USBD_HandleTypeDef
 {
     enum EndpointType {
@@ -17,8 +19,8 @@ typedef struct _USBD_HandleTypeDef
     //     SpeedLow,
     // };
 
-    USBD_EndpointTypeDef ep_in[16];
-    USBD_EndpointTypeDef ep_out[16];
+    UsbEndpoint ep_in[16];
+    UsbEndpoint ep_out[16];
 
     void *mClassData = nullptr;
     void *pUserData = nullptr;
@@ -93,11 +95,11 @@ private:
     void setFeature(USBD_SetupReqTypedef *req);
     void clearFeature(USBD_SetupReqTypedef *req);
 
-    void parseSetupRequest(USBD_SetupReqTypedef *req, uint8_t *pdata) const;
+    bool isEndpointIn(uint8_t epAddress) const;
 
     uint8_t mId = 0;
     DeviceState mState = DeviceDefault;
-    uint32_t mConfig = 0;
+    uint32_t mConfigIndex = 0;
     uint32_t mConfigDefault = 0;
     uint32_t mConfigStatus = 0;
     DeviceState mDeviceOldState = DeviceDefault;

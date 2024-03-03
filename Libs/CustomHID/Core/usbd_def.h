@@ -21,6 +21,8 @@
 #ifndef __USBD_DEF_H
 #define __USBD_DEF_H
 
+#include "UsbSetupRequest.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -80,27 +82,27 @@ extern "C" {
 #define  USBD_IDX_CONFIG_STR                            0x04U
 #define  USBD_IDX_INTERFACE_STR                         0x05U
 
-#define  USB_REQ_TYPE_STANDARD                          0x00U
-#define  USB_REQ_TYPE_CLASS                             0x20U
-#define  USB_REQ_TYPE_VENDOR                            0x40U
-#define  USB_REQ_TYPE_MASK                              0x60U
+// #define  USB_REQ_TYPE_STANDARD                          0x00U
+// #define  USB_REQ_TYPE_CLASS                             0x20U
+// #define  USB_REQ_TYPE_VENDOR                            0x40U
+// #define  USB_REQ_TYPE_MASK                              0x60U
 
-#define  USB_REQ_RECIPIENT_DEVICE                       0x00U
-#define  USB_REQ_RECIPIENT_INTERFACE                    0x01U
-#define  USB_REQ_RECIPIENT_ENDPOINT                     0x02U
-#define  USB_REQ_RECIPIENT_MASK                         0x03U
+// #define  USB_REQ_RECIPIENT_DEVICE                       0x00U
+// #define  USB_REQ_RECIPIENT_INTERFACE                    0x01U
+// #define  USB_REQ_RECIPIENT_ENDPOINT                     0x02U
+// #define  USB_REQ_RECIPIENT_MASK                         0x03U
 
-#define  USB_REQ_GET_STATUS                             0x00U
-#define  USB_REQ_CLEAR_FEATURE                          0x01U
-#define  USB_REQ_SET_FEATURE                            0x03U
-#define  USB_REQ_SET_ADDRESS                            0x05U
-#define  USB_REQ_GET_DESCRIPTOR                         0x06U
-#define  USB_REQ_SET_DESCRIPTOR                         0x07U
-#define  USB_REQ_GET_CONFIGURATION                      0x08U
-#define  USB_REQ_SET_CONFIGURATION                      0x09U
-#define  USB_REQ_GET_INTERFACE                          0x0AU
-#define  USB_REQ_SET_INTERFACE                          0x0BU
-#define  USB_REQ_SYNCH_FRAME                            0x0CU
+// #define  USB_REQ_GET_STATUS                             0x00U
+// #define  USB_REQ_CLEAR_FEATURE                          0x01U
+// #define  USB_REQ_SET_FEATURE                            0x03U
+// #define  USB_REQ_SET_ADDRESS                            0x05U
+// #define  USB_REQ_GET_DESCRIPTOR                         0x06U
+// #define  USB_REQ_SET_DESCRIPTOR                         0x07U
+// #define  USB_REQ_GET_CONFIGURATION                      0x08U
+// #define  USB_REQ_SET_CONFIGURATION                      0x09U
+// #define  USB_REQ_GET_INTERFACE                          0x0AU
+// #define  USB_REQ_SET_INTERFACE                          0x0BU
+// #define  USB_REQ_SYNCH_FRAME                            0x0CU
 
 #define  USB_DESC_TYPE_DEVICE                           0x01U
 #define  USB_DESC_TYPE_CONFIGURATION                    0x02U
@@ -124,19 +126,6 @@ extern "C" {
 #define USB_FS_MAX_PACKET_SIZE                          64U
 #define USB_MAX_EP0_SIZE                                64U
 
-
-/** @defgroup USBD_DEF_Exported_TypesDefinitions
-  * @{
-  */
-
-typedef  struct  usb_setup_req
-{
-  uint8_t   bmRequest;
-  uint8_t   bRequest;
-  uint16_t  wValue;
-  uint16_t  wIndex;
-  uint16_t  wLength;
-} USBD_SetupReqTypedef;
 
 struct _USBD_HandleTypeDef;
 
@@ -196,27 +185,12 @@ typedef struct
 #endif
 } USBD_DescriptorsTypeDef;
 
-/* USB Device handle structure */
-typedef struct
-{
-  uint32_t                status;
-  uint32_t                is_used;
-  uint32_t                total_length;
-  uint32_t                rem_length;
-  uint32_t                maxpacket;
-} USBD_EndpointTypeDef;
-
-/**
-  * @}
-  */
-
-
 
 /** @defgroup USBD_DEF_Exported_Macros
   * @{
   */
-#define  SWAPBYTE(addr)        (((uint16_t)(*((uint8_t *)(addr)))) + \
-                               (((uint16_t)(*(((uint8_t *)(addr)) + 1U))) << 8U))
+// #define  SWAPBYTE(addr)        (((uint16_t)(*((uint8_t *)(addr)))) + \
+//                                (((uint16_t)(*(((uint8_t *)(addr)) + 1U))) << 8U))
 
 #define LOBYTE(x)  ((uint8_t)((x) & 0x00FFU))
 #define HIBYTE(x)  ((uint8_t)(((x) & 0xFF00U) >> 8U))

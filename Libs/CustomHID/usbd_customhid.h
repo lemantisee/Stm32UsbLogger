@@ -21,13 +21,13 @@
 #ifndef __USB_CUSTOMHID_H
 #define __USB_CUSTOMHID_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "UsbHandle.h"
+
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
 
 /* Includes ------------------------------------------------------------------*/
-
-#include "UsbHandle.h"
 
 /** @addtogroup STM32_USB_DEVICE_LIBRARY
   * @{
@@ -152,9 +152,9 @@ uint8_t  USBD_CUSTOM_HID_RegisterInterface(UsbHandle   *pdev,
   * @}
   */
 
-#ifdef __cplusplus
-}
-#endif
+// #ifdef __cplusplus
+// }
+// #endif
 
 #endif  /* __USB_CUSTOMHID_H */
 /**
