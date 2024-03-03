@@ -8,9 +8,8 @@ target_sources(
     ${PROJECT_NAME} PRIVATE
     src/main.cpp
     src/Usb/UsbDevice.h src/Usb/UsbDevice.cpp
-    # src/Usb/usb_device.h src/Usb/usb_device.cpp
-    src/Usb/usbd_custom_hid_if.h src/Usb/usbd_custom_hid_if.c
-    src/Usb/usbd_desc.h src/Usb/usbd_desc.c
+    src/Usb/usbd_custom_hid_if.h src/Usb/usbd_custom_hid_if.cpp
+    src/Usb/usbd_desc.h src/Usb/usbd_desc.cpp
 
     Core/stm32f1xx_hal_msp.c
     Core/stm32f1xx_it.c

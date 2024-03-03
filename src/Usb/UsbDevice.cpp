@@ -1,6 +1,5 @@
 #include "UsbDevice.h"
 
-#include "usbd_core.h" 
 #include "usbd_desc.h"
 #include "usbd_customhid.h"
 #include "usbd_custom_hid_if.h"
@@ -15,14 +14,14 @@ namespace {
 
 bool UsbDevice::init()
 {
-  if (!UsbCore::init(&mHandle, &FS_Desc, deviceId)) {
+  if (!UsbCore::ref()->init(&mHandle, &FS_Desc, deviceId)) {
       return false;
   }
 
   mHandle.pClass = &USBD_CUSTOM_HID;
   mHandle.pUserData = &USBD_CustomHID_fops_FS;
 
-  return UsbCore::start(&mHandle);
+  return UsbCore::ref()->start(&mHandle);
 }
 
 bool UsbDevice::sendData(const char *data)

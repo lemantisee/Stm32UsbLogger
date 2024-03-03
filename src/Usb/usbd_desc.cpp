@@ -1,6 +1,8 @@
-#include "usbd_core.h"
 #include "usbd_desc.h"
 #include "usbd_conf.h"
+#include "usbd_ctlreq.h"
+
+#include "UsbCore.h"
 
 #define USBD_VID     1155
 #define USBD_LANGID_STRING     1033

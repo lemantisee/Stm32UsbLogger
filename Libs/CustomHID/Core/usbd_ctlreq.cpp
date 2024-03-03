@@ -21,6 +21,8 @@
 #include "usbd_ctlreq.h"
 #include "usbd_ioreq.h"
 
+#include "UsbCore.h"
+
 
 /** @addtogroup STM32_USBD_STATE_DEVICE_LIBRARY
   * @{
@@ -653,7 +655,7 @@ static void USBD_SetConfig(USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *req)
         {
           pdev->dev_config = cfgidx;
           pdev->dev_state = USBD_STATE_CONFIGURED;
-          if (USBD_SetClassConfig(pdev, cfgidx) == USBD_FAIL)
+          if (!UsbCore::ref()->setClassConfig(pdev, cfgidx))
           {
             USBD_CtlError(pdev, req);
             return;
@@ -671,17 +673,17 @@ static void USBD_SetConfig(USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *req)
         {
           pdev->dev_state = USBD_STATE_ADDRESSED;
           pdev->dev_config = cfgidx;
-          USBD_ClrClassConfig(pdev, cfgidx);
+          UsbCore::ref()->clearClassConfig(pdev, cfgidx);
           USBD_CtlSendStatus(pdev);
         }
         else if (cfgidx != pdev->dev_config)
         {
           /* Clear old configuration */
-          USBD_ClrClassConfig(pdev, (uint8_t)pdev->dev_config);
+          UsbCore::ref()->clearClassConfig(pdev, (uint8_t)pdev->dev_config);
 
           /* set new configuration */
           pdev->dev_config = cfgidx;
-          if (USBD_SetClassConfig(pdev, cfgidx) == USBD_FAIL)
+          if (!UsbCore::ref()->setClassConfig(pdev, cfgidx))
           {
             USBD_CtlError(pdev, req);
             return;
@@ -696,7 +698,7 @@ static void USBD_SetConfig(USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *req)
 
       default:
         USBD_CtlError(pdev, req);
-        USBD_ClrClassConfig(pdev, cfgidx);
+        UsbCore::ref()->clearClassConfig(pdev, cfgidx);
         break;
     }
   }
