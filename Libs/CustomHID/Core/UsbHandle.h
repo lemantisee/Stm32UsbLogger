@@ -1,8 +1,7 @@
 #pragma once
 
-#include "usbd_def.h"
-
 #include "UsbEndpoint.h"
+#include "UsbDescriptor.h"
 
 typedef struct _USBD_HandleTypeDef
 {
@@ -26,7 +25,7 @@ typedef struct _USBD_HandleTypeDef
     void *pUserData = nullptr;
     void *pData = nullptr;
 
-    bool init(USBD_DescriptorsTypeDef *pdesc, uint8_t id_);
+    bool init(UsbDescriptor *descriptor, uint8_t id_);
     bool deinit();
 
     void setup(uint8_t *psetup);
@@ -41,7 +40,7 @@ typedef struct _USBD_HandleTypeDef
 
     bool isConfigured() const;
 
-    void setSpeed(USBD_SpeedTypeDef speed);
+    void setSpeed(UsbSpeed speed);
     bool setClassConfig(uint8_t cfgidx);
     bool clearClassConfig(uint8_t cfgidx);
     bool registerClass(USBD_ClassTypeDef *pclass);
@@ -109,9 +108,9 @@ private:
     uint32_t mRemoteWakeup = 0;
     EndpointState mEndpoint0State = EndpointIdle;
     uint32_t mEndpoint0Size = 0;
-    USBD_SpeedTypeDef mSpeed = USBD_SPEED_HIGH;
+    UsbSpeed mSpeed = USBD_SPEED_HIGH;
     USBD_SetupReqTypedef mRequest;
-    USBD_DescriptorsTypeDef *mDescriptor = nullptr;
+    UsbDescriptor *mDescriptor = nullptr;
     USBD_ClassTypeDef *mClassType = nullptr;
 
 } UsbHandle;

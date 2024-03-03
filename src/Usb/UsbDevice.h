@@ -1,7 +1,7 @@
 #pragma once
 
-#include "usbd_desc.h"
 #include "UsbCoreF103.h"
+#include "UsbDeviceDescriptor.h"
 
 class UsbDevice
 {
@@ -15,4 +15,5 @@ public:
 private:
     UsbCoreF103 mCore;
     UsbHandle mHandle;
+    UsbDeviceDescriptor mDescriptor;
 };

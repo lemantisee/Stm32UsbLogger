@@ -4,14 +4,14 @@
 
 #include "UsbCore.h"
 
-bool _USBD_HandleTypeDef::init(USBD_DescriptorsTypeDef *pdesc, uint8_t id_)
+bool _USBD_HandleTypeDef::init(UsbDescriptor *descriptor, uint8_t id_)
 {
     if (mClassType) {
         mClassType = nullptr;
     }
 
-    if (pdesc) {
-        mDescriptor = pdesc;
+    if (descriptor) {
+        mDescriptor = descriptor;
     }
 
     mState = DeviceDefault;
@@ -101,7 +101,7 @@ void _USBD_HandleTypeDef::sof()
 
 bool _USBD_HandleTypeDef::isConfigured() const { return mState == DeviceConfigured; }
 
-void _USBD_HandleTypeDef::setSpeed(USBD_SpeedTypeDef speed) { mSpeed = speed; }
+void _USBD_HandleTypeDef::setSpeed(UsbSpeed speed) { mSpeed = speed; }
 
 bool _USBD_HandleTypeDef::setClassConfig(uint8_t cfgidx)
 {
@@ -515,7 +515,7 @@ void _USBD_HandleTypeDef::getConfig(USBD_SetupReqTypedef *req)
 void _USBD_HandleTypeDef::getDescriptor(USBD_SetupReqTypedef *req)
 {
     uint16_t len = 0U;
-    uint8_t *pbuf = NULL;
+    uint8_t *pbuf = nullptr;
     uint8_t err = 0U;
 
     switch (req->getDescriptorType()) {
@@ -544,57 +544,27 @@ void _USBD_HandleTypeDef::getDescriptor(USBD_SetupReqTypedef *req)
     case USB_DESC_TYPE_STRING:
         switch (req->getStringIndex()) {
         case USBD_IDX_LANGID_STR:
-            if (mDescriptor->GetLangIDStrDescriptor != NULL) {
-                pbuf = mDescriptor->GetLangIDStrDescriptor(mSpeed, &len);
-            } else {
-                stallEndpoints();
-                err++;
-            }
+            pbuf = mDescriptor->GetLangIDStrDescriptor(mSpeed, &len);
             break;
 
         case USBD_IDX_MFC_STR:
-            if (mDescriptor->GetManufacturerStrDescriptor != NULL) {
-                pbuf = mDescriptor->GetManufacturerStrDescriptor(mSpeed, &len);
-            } else {
-                stallEndpoints();
-                err++;
-            }
+            pbuf = mDescriptor->GetManufacturerStrDescriptor(mSpeed, &len);
             break;
 
         case USBD_IDX_PRODUCT_STR:
-            if (mDescriptor->GetProductStrDescriptor != NULL) {
-                pbuf = mDescriptor->GetProductStrDescriptor(mSpeed, &len);
-            } else {
-                stallEndpoints();
-                err++;
-            }
+            pbuf = mDescriptor->GetProductStrDescriptor(mSpeed, &len);
             break;
 
         case USBD_IDX_SERIAL_STR:
-            if (mDescriptor->GetSerialStrDescriptor != NULL) {
-                pbuf = mDescriptor->GetSerialStrDescriptor(mSpeed, &len);
-            } else {
-                stallEndpoints();
-                err++;
-            }
+            pbuf = mDescriptor->GetSerialStrDescriptor(mSpeed, &len);
             break;
 
         case USBD_IDX_CONFIG_STR:
-            if (mDescriptor->GetConfigurationStrDescriptor != NULL) {
-                pbuf = mDescriptor->GetConfigurationStrDescriptor(mSpeed, &len);
-            } else {
-                stallEndpoints();
-                err++;
-            }
+            pbuf = mDescriptor->GetConfigurationStrDescriptor(mSpeed, &len);
             break;
 
         case USBD_IDX_INTERFACE_STR:
-            if (mDescriptor->GetInterfaceStrDescriptor != NULL) {
-                pbuf = mDescriptor->GetInterfaceStrDescriptor(mSpeed, &len);
-            } else {
-                stallEndpoints();
-                err++;
-            }
+            pbuf = mDescriptor->GetInterfaceStrDescriptor(mSpeed, &len);
             break;
 
         default:
@@ -641,7 +611,7 @@ void _USBD_HandleTypeDef::getDescriptor(USBD_SetupReqTypedef *req)
     if (err != 0U) {
         return;
     } else {
-        if ((len != 0U) && (req->getLength() != 0U)) {
+        if ((len != 0) && (req->getLength() != 0)) {
             len = std::min(len, req->getLength());
             sendData(pbuf, len);
         }

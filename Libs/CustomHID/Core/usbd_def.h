@@ -155,7 +155,7 @@ typedef struct _Device_cb
 } USBD_ClassTypeDef;
 
 /* Following USB Device Speed */
-enum USBD_SpeedTypeDef
+enum UsbSpeed
 {
   USBD_SPEED_HIGH  = 0U,
   USBD_SPEED_FULL  = 1U,
@@ -169,21 +169,6 @@ typedef enum
   USBD_BUSY,
   USBD_FAIL,
 } USBD_StatusTypeDef;
-
-/* USB Device descriptors structure */
-typedef struct
-{
-  uint8_t  *(*GetDeviceDescriptor)(USBD_SpeedTypeDef speed, uint16_t *length);
-  uint8_t  *(*GetLangIDStrDescriptor)(USBD_SpeedTypeDef speed, uint16_t *length);
-  uint8_t  *(*GetManufacturerStrDescriptor)(USBD_SpeedTypeDef speed, uint16_t *length);
-  uint8_t  *(*GetProductStrDescriptor)(USBD_SpeedTypeDef speed, uint16_t *length);
-  uint8_t  *(*GetSerialStrDescriptor)(USBD_SpeedTypeDef speed, uint16_t *length);
-  uint8_t  *(*GetConfigurationStrDescriptor)(USBD_SpeedTypeDef speed, uint16_t *length);
-  uint8_t  *(*GetInterfaceStrDescriptor)(USBD_SpeedTypeDef speed, uint16_t *length);
-#if (USBD_LPM_ENABLED == 1U)
-  uint8_t  *(*GetBOSDescriptor)(USBD_SpeedTypeDef speed, uint16_t *length);
-#endif
-} USBD_DescriptorsTypeDef;
 
 
 /** @defgroup USBD_DEF_Exported_Macros
@@ -230,37 +215,8 @@ typedef struct
 #endif /* __GNUC__ */
 
 
-/**
-  * @}
-  */
-
-/** @defgroup USBD_DEF_Exported_Variables
-  * @{
-  */
-
-/**
-  * @}
-  */
-
-/** @defgroup USBD_DEF_Exported_FunctionsPrototype
-  * @{
-  */
-
-/**
-  * @}
-  */
-
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* __USBD_DEF_H */
-
-/**
-  * @}
-  */
-
-/**
-* @}
-*/
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

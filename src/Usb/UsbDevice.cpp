@@ -1,6 +1,5 @@
 #include "UsbDevice.h"
 
-#include "usbd_desc.h"
 #include "usbd_customhid.h"
 #include "usbd_custom_hid_if.h"
 
@@ -16,7 +15,7 @@ UsbDevice::UsbDevice() { UsbCore::setImpl(&mCore); }
 
 bool UsbDevice::init()
 {
-    if (!mHandle.init(&FS_Desc, deviceId)) {
+    if (!mHandle.init(&mDescriptor, deviceId)) {
         return false;
     }
 
