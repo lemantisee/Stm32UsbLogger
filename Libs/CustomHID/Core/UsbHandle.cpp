@@ -36,13 +36,13 @@ void _USBD_HandleTypeDef::setup(uint8_t *psetup)
     mRequest.parse(psetup);
 
     mEndpoint0State = EndpointSetup;
-    mEndpoint0Size = mRequest.wLength;
+    mEndpoint0Size = mRequest.getLength();
 
     switch (mRequest.getRecipient()) {
     case USBD_SetupReqTypedef::RecipientDevice: onDeviceRequest(&mRequest); break;
     case USBD_SetupReqTypedef::RecipientInterface: onInterfaceRequest(&mRequest); break;
     case USBD_SetupReqTypedef::RecipientEndpoint: onEndpointRequest(&mRequest); break;
-    default: UsbCore::ref()->stallEndpoint(this, (mRequest.bmRequest & 0x80U)); break;
+    default: UsbCore::ref()->stallEndpoint(this, mRequest.getEndpointFromMask()); break;
     }
 }
 
@@ -301,10 +301,10 @@ bool _USBD_HandleTypeDef::onInterfaceRequest(USBD_SetupReqTypedef *req)
         case DeviceAddressed:
         case DeviceConfigured:
 
-            if (req->getInterfaceNumber() <= USBD_MAX_NUM_INTERFACES) {
+            if (req->getInterfaceIndex() <= USBD_MAX_NUM_INTERFACES) {
                 bool ok = (USBD_StatusTypeDef)mClassType->Setup(this, req) == USBD_OK;
 
-                if (req->wLength == 0U && ok) {
+                if (req->getLength() == 0U && ok) {
                     sendStatus();
                 }
             } else {
@@ -344,7 +344,7 @@ bool _USBD_HandleTypeDef::onEndpointRequest(USBD_SetupReqTypedef *req)
 
             case DeviceConfigured:
                 if (req->getFeatureRequest() == USB_FEATURE_EP_HALT) {
-                    if ((ep_addr != 0x00U) && (ep_addr != 0x80U) && (req->wLength == 0x00U)) {
+                    if ((ep_addr != 0x00U) && (ep_addr != 0x80U) && (req->getLength() == 0x00U)) {
                         UsbCore::ref()->stallEndpoint(this, ep_addr);
                     }
                 }
@@ -496,7 +496,7 @@ void _USBD_HandleTypeDef::setConfig(USBD_SetupReqTypedef *req)
 
 void _USBD_HandleTypeDef::getConfig(USBD_SetupReqTypedef *req)
 {
-    if (req->wLength != 1U) {
+    if (req->getLength() != 1U) {
         stallEndpoints();
         return;
     }
@@ -641,12 +641,12 @@ void _USBD_HandleTypeDef::getDescriptor(USBD_SetupReqTypedef *req)
     if (err != 0U) {
         return;
     } else {
-        if ((len != 0U) && (req->wLength != 0U)) {
-            len = std::min(len, req->wLength);
+        if ((len != 0U) && (req->getLength() != 0U)) {
+            len = std::min(len, req->getLength());
             sendData(pbuf, len);
         }
 
-        if (req->wLength == 0U) {
+        if (req->getLength() == 0U) {
             (void)sendStatus();
         }
     }
@@ -678,7 +678,7 @@ void _USBD_HandleTypeDef::getStatus(USBD_SetupReqTypedef *req)
     case DeviceDefault:
     case DeviceAddressed:
     case DeviceConfigured:
-        if (req->wLength != 0x2U) {
+        if (req->getLength() != 0x2U) {
             stallEndpoints();
             break;
         }

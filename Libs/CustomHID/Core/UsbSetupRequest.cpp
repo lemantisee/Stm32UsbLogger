@@ -9,43 +9,51 @@ uint8_t loByte(uint16_t value) { return uint8_t(value & 0x00FF); }
 
 usb_setup_req::RecipientType usb_setup_req::getRecipient() const
 {
-    return RecipientType(bmRequest & 0x1FU);
+    return RecipientType(mMaskRequest & 0x1FU);
 }
 
-usb_setup_req::Request usb_setup_req::getRequest() const { return bRequest; }
+usb_setup_req::Request usb_setup_req::getRequest() const { return mRequest; }
 
 usb_setup_req::RequestType usb_setup_req::getRequestType() const
 {
     const uint32_t requestTypeMask = 96;
-    return RequestType(bmRequest & requestTypeMask);
+    return RequestType(mMaskRequest & requestTypeMask);
 }
 
 void usb_setup_req::parse(uint8_t *pdata)
 {
-    bmRequest = *(uint8_t *)(pdata);
-    bRequest = USBD_SetupReqTypedef::Request(*(uint8_t *)(pdata + 1U));
-    wValue = swapByte(pdata + 2U);
-    mIndex = swapByte(pdata + 4U);
-    wLength = swapByte(pdata + 6U);
+    mMaskRequest = *pdata;
+    mRequest = USBD_SetupReqTypedef::Request(*(pdata + 1));
+    mValue = swapByte(pdata + 2);
+    mIndex = swapByte(pdata + 4);
+    mLength = swapByte(pdata + 6);
 }
+
+uint16_t usb_setup_req::getLength() const { return mLength; }
 
 uint8_t usb_setup_req::getEndpointAddress() const { return loByte(mIndex); }
 
-uint8_t usb_setup_req::getInterfaceNumber() const { return loByte(mIndex); }
+uint8_t usb_setup_req::getInterfaceIndex() const { return loByte(mIndex); }
 
 std::optional<uint8_t> usb_setup_req::getDeviceAddress() const
 {
-    if (mIndex != 0 || wLength != 0 || wValue >= 128) {
+    if (mIndex != 0 || mLength != 0 || mValue >= 128) {
         return std::nullopt;
     }
 
-    return (uint8_t)(wValue) & 0x7FU;
+    return (uint8_t)(mValue) & 0x7F;
 }
 
-uint8_t usb_setup_req::getDescriptorType() const { return wValue >> 8; }
+uint8_t usb_setup_req::getDescriptorType() const { return mValue >> 8; }
 
-uint8_t usb_setup_req::getStringIndex() const { return uint8_t(wValue); }
+uint8_t usb_setup_req::getStringIndex() const { return uint8_t(mValue); }
 
-uint8_t usb_setup_req::getFeatureRequest() const { return wValue; }
+uint8_t usb_setup_req::getFeatureRequest() const { return mValue; }
 
-uint8_t usb_setup_req::getConfigIndex() const { return wValue; }
+uint8_t usb_setup_req::getConfigIndex() const { return mValue; }
+
+uint8_t usb_setup_req::getProtocol() const { return uint8_t(mValue); }
+
+uint8_t usb_setup_req::getIdleState() const { return uint8_t(mValue >> 8); }
+
+uint8_t usb_setup_req::getEndpointFromMask() const { return mMaskRequest & 0x80U; }

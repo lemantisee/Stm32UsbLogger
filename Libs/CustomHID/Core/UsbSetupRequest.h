@@ -32,26 +32,29 @@ typedef struct usb_setup_req
         RequestVendor = 64,
     };
 
-    uint8_t bmRequest = 0;
-    Request bRequest = RequestGetStatus;
-    uint16_t wValue = 0;
-    
-    uint16_t wLength = 0;
-
     RecipientType getRecipient() const;
     Request getRequest() const;
     RequestType getRequestType() const;
     void parse(uint8_t *pdata);
 
+    uint16_t getLength() const;
     uint8_t getEndpointAddress() const;
-    uint8_t getInterfaceNumber() const;
+    uint8_t getInterfaceIndex() const;
     std::optional<uint8_t> getDeviceAddress() const;
     uint8_t getDescriptorType() const;
     uint8_t getStringIndex() const;
     uint8_t getFeatureRequest() const;
     uint8_t getConfigIndex() const;
+    uint8_t getProtocol() const;
+    uint8_t getIdleState() const;
+    uint8_t getEndpointFromMask() const;
 
 private:
+    Request mRequest = RequestGetStatus;
+    uint8_t mMaskRequest = 0;
+
+    uint16_t mLength = 0;
     uint16_t mIndex = 0;
+    uint16_t mValue = 0;
 
 } USBD_SetupReqTypedef;

@@ -418,14 +418,14 @@ static uint8_t USBD_CUSTOM_HID_Setup(UsbHandle *pdev, USBD_SetupReqTypedef *req)
 
     switch (req->getRequestType()) {
     case USBD_SetupReqTypedef::RequestClass:
-        switch (req->bRequest) {
-        case CUSTOM_HID_REQ_SET_PROTOCOL: hhid->Protocol = (uint8_t)(req->wValue); break;
+        switch (req->getRequest()) {
+        case CUSTOM_HID_REQ_SET_PROTOCOL: hhid->Protocol = req->getProtocol(); break;
 
         case CUSTOM_HID_REQ_GET_PROTOCOL:
             pdev->sendData((uint8_t *)(void *)&hhid->Protocol, 1U);
             break;
 
-        case CUSTOM_HID_REQ_SET_IDLE: hhid->IdleState = (uint8_t)(req->wValue >> 8); break;
+        case CUSTOM_HID_REQ_SET_IDLE: hhid->IdleState = req->getIdleState(); break;
 
         case CUSTOM_HID_REQ_GET_IDLE:
             pdev->sendData((uint8_t *)(void *)&hhid->IdleState, 1U);
@@ -433,7 +433,7 @@ static uint8_t USBD_CUSTOM_HID_Setup(UsbHandle *pdev, USBD_SetupReqTypedef *req)
 
         case CUSTOM_HID_REQ_SET_REPORT:
             hhid->IsReportAvailable = 1U;
-            pdev->prepareRx(hhid->Report_buf, req->wLength);
+            pdev->prepareRx(hhid->Report_buf, req->getLength());
             break;
 
         default:
@@ -455,13 +455,13 @@ static uint8_t USBD_CUSTOM_HID_Setup(UsbHandle *pdev, USBD_SetupReqTypedef *req)
             break;
 
         case USBD_SetupReqTypedef::RequestGetDescriptor:
-            if (req->wValue >> 8 == CUSTOM_HID_REPORT_DESC) {
-                len = std::min<uint16_t>(USBD_CUSTOM_HID_REPORT_DESC_SIZE, req->wLength);
+            if (req->getDescriptorType() == CUSTOM_HID_REPORT_DESC) {
+                len = std::min<uint16_t>(USBD_CUSTOM_HID_REPORT_DESC_SIZE, req->getLength());
                 pbuf = ((USBD_CUSTOM_HID_ItfTypeDef *)pdev->pUserData)->pReport;
             } else {
-                if (req->wValue >> 8 == CUSTOM_HID_DESCRIPTOR_TYPE) {
+                if (req->getDescriptorType() == CUSTOM_HID_DESCRIPTOR_TYPE) {
                     pbuf = USBD_CUSTOM_HID_Desc;
-                    len = std::min<uint16_t>(USB_CUSTOM_HID_DESC_SIZ, req->wLength);
+                    len = std::min<uint16_t>(USB_CUSTOM_HID_DESC_SIZ, req->getLength());
                 }
             }
 
@@ -479,7 +479,8 @@ static uint8_t USBD_CUSTOM_HID_Setup(UsbHandle *pdev, USBD_SetupReqTypedef *req)
 
         case USBD_SetupReqTypedef::RequestSetInterface:
             if (pdev->isConfigured()) {
-                hhid->AltSetting = (uint8_t)(req->wValue);
+                // hhid->AltSetting = (uint8_t)(req->wValue);
+                hhid->AltSetting = req->getInterfaceIndex();
             } else {
                 pdev->stallEndpoints();
                 ret = USBD_FAIL;
