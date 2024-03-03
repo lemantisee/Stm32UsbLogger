@@ -1,14 +1,25 @@
 #include "UsbCore.h"
 
-#include "usbd_conf.h"
+#include <algorithm>
+
 #include "usbd_def.h"
 #include "usbd_ioreq.h"
 #include "usbd_ctlreq.h"
 
+namespace
+{
+    UsbCore *coreImpl = nullptr;
+} // namespace
+
+
+void UsbCore::setImpl(UsbCore *impl)
+{
+    coreImpl = impl;
+}
+
 UsbCore *UsbCore::ref()
 {
-    static UsbCore core;
-    return &core;
+    return coreImpl;
 }
 
 bool UsbCore::init(USBD_HandleTypeDef *pdev, USBD_DescriptorsTypeDef *pdesc, uint8_t id)
@@ -31,12 +42,12 @@ bool UsbCore::init(USBD_HandleTypeDef *pdev, USBD_DescriptorsTypeDef *pdesc, uin
     pdev->dev_state = USBD_STATE_DEFAULT;
     pdev->id = id;
 
-    return USBD_LL_Init(pdev) == USBD_OK;
+    return initInterface(pdev);
 }
 
 bool UsbCore::start(USBD_HandleTypeDef *pdev)
 {
-    return USBD_LL_Start(pdev) == USBD_OK;
+    return startInterface(pdev);
 }
 
 bool UsbCore::deinit(USBD_HandleTypeDef *pdev)
@@ -44,18 +55,18 @@ bool UsbCore::deinit(USBD_HandleTypeDef *pdev)
   pdev->dev_state = USBD_STATE_DEFAULT;
   pdev->pClass->DeInit(pdev, (uint8_t)pdev->dev_config);
 
-  if (USBD_LL_Stop(pdev) != USBD_OK) {
+  if (!stopInterface(pdev)) {
     return false;
   }
 
-  return USBD_LL_DeInit(pdev) == USBD_OK;
+  return deinitInterface(pdev);
 }
 
 bool UsbCore::stop(USBD_HandleTypeDef *pdev)
 {
   pdev->pClass->DeInit(pdev, (uint8_t)pdev->dev_config);
 
-  return USBD_LL_Stop(pdev) == USBD_OK;
+  return stopInterface(pdev);
 }
 
 bool UsbCore::registerClass(USBD_HandleTypeDef *pdev, USBD_ClassTypeDef *pclass)
@@ -87,11 +98,6 @@ bool UsbCore::clearClassConfig(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
     return pdev->pClass->DeInit(pdev, cfgidx) == USBD_OK;
 }
 
-void UsbCore::delay(uint32_t ms)
-{
-    HAL_Delay(ms);
-}
-
 bool UsbCore::setupStage(USBD_HandleTypeDef *pdev, uint8_t *psetup)
 {
   USBD_ParseSetupRequest(&pdev->request, psetup);
@@ -114,7 +120,7 @@ bool UsbCore::setupStage(USBD_HandleTypeDef *pdev, uint8_t *psetup)
       break;
 
     default:
-      USBD_LL_StallEP(pdev, (pdev->request.bmRequest & 0x80U));
+      stallEndpoint(pdev, (pdev->request.bmRequest & 0x80U));
       break;
   }
 
@@ -135,8 +141,7 @@ bool UsbCore::dataOutStage(USBD_HandleTypeDef *pdev, uint8_t epnum, uint8_t *pda
       {
         pep->rem_length -= pep->maxpacket;
 
-        USBD_CtlContinueRx(pdev, pdata,
-                           (uint16_t)MIN(pep->rem_length, pep->maxpacket));
+        USBD_CtlContinueRx(pdev, pdata, std::min(pep->rem_length, pep->maxpacket));
       }
       else
       {
@@ -156,7 +161,7 @@ bool UsbCore::dataOutStage(USBD_HandleTypeDef *pdev, uint8_t epnum, uint8_t *pda
          * STATUS PHASE completed, update ep0_state to idle
          */
         pdev->ep0_state = USBD_EP0_IDLE;
-        USBD_LL_StallEP(pdev, 0U);
+        stallEndpoint(pdev, 0U);
       }
     }
   }
@@ -191,7 +196,7 @@ bool UsbCore::dataInStage(USBD_HandleTypeDef *pdev, uint8_t epnum, uint8_t *pdat
         USBD_CtlContinueSendData(pdev, pdata, (uint16_t)pep->rem_length);
 
         /* Prepare endpoint for premature end of transfer */
-        USBD_LL_PrepareReceive(pdev, 0U, NULL, 0U);
+        prepareReceive(pdev, 0U, NULL, 0U);
       }
       else
       {
@@ -204,7 +209,7 @@ bool UsbCore::dataInStage(USBD_HandleTypeDef *pdev, uint8_t epnum, uint8_t *pdat
           pdev->ep0_data_len = 0U;
 
           /* Prepare endpoint for premature end of transfer */
-          USBD_LL_PrepareReceive(pdev, 0U, NULL, 0U);
+          prepareReceive(pdev, 0U, NULL, 0U);
         }
         else
         {
@@ -213,7 +218,7 @@ bool UsbCore::dataInStage(USBD_HandleTypeDef *pdev, uint8_t epnum, uint8_t *pdat
           {
             pdev->pClass->EP0_TxSent(pdev);
           }
-          USBD_LL_StallEP(pdev, 0x80U);
+          stallEndpoint(pdev, 0x80U);
           USBD_CtlReceiveStatus(pdev);
         }
       }
@@ -223,7 +228,7 @@ bool UsbCore::dataInStage(USBD_HandleTypeDef *pdev, uint8_t epnum, uint8_t *pdat
       if ((pdev->ep0_state == USBD_EP0_STATUS_IN) ||
           (pdev->ep0_state == USBD_EP0_IDLE))
       {
-        USBD_LL_StallEP(pdev, 0x80U);
+        stallEndpoint(pdev, 0x80U);
       }
     }
 
@@ -249,13 +254,13 @@ bool UsbCore::dataInStage(USBD_HandleTypeDef *pdev, uint8_t epnum, uint8_t *pdat
 bool UsbCore::resetDevice(USBD_HandleTypeDef *pdev)
 {
   /* Open EP0 OUT */
-  USBD_LL_OpenEP(pdev, 0x00U, USBD_EP_TYPE_CTRL, USB_MAX_EP0_SIZE);
+  openEndpoint(pdev, 0x00U, USBD_EP_TYPE_CTRL, USB_MAX_EP0_SIZE);
   pdev->ep_out[0x00U & 0xFU].is_used = 1U;
 
   pdev->ep_out[0].maxpacket = USB_MAX_EP0_SIZE;
 
   /* Open EP0 IN */
-  USBD_LL_OpenEP(pdev, 0x80U, USBD_EP_TYPE_CTRL, USB_MAX_EP0_SIZE);
+  openEndpoint(pdev, 0x80U, USBD_EP_TYPE_CTRL, USB_MAX_EP0_SIZE);
   pdev->ep_in[0x80U & 0xFU].is_used = 1U;
 
   pdev->ep_in[0].maxpacket = USB_MAX_EP0_SIZE;

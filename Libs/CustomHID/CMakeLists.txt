@@ -8,7 +8,6 @@ add_library(${PROJECT_NAME} STATIC
     Core/usbd_ioreq.cpp
     Core/usbd_ioreq.h
 
-    usbd_conf.h usbd_conf.cpp
     usbd_customhid.h usbd_customhid.cpp
 )
 

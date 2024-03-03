@@ -1,15 +1,17 @@
 #pragma once
 
 #include "usbd_desc.h"
+#include "UsbCoreF103.h"
 
 class UsbDevice
 {
 public:
-    UsbDevice() = default;
+    UsbDevice();
     ~UsbDevice() = default;
 
     bool init();
     bool sendData(const char *data);
 private:
+    UsbCoreF103 mCore;
     USBD_HandleTypeDef mHandle;
 };

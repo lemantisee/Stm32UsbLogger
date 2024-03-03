@@ -7,12 +7,14 @@ add_executable(${PROJECT_NAME})
 target_sources(
     ${PROJECT_NAME} PRIVATE
     src/main.cpp
+    src/Usb/UsbCoreF103.h src/Usb/UsbCoreF103.cpp
     src/Usb/UsbDevice.h src/Usb/UsbDevice.cpp
+    src/Usb/UsbPcdCallbacks.cpp
     src/Usb/usbd_custom_hid_if.h src/Usb/usbd_custom_hid_if.cpp
     src/Usb/usbd_desc.h src/Usb/usbd_desc.cpp
 
     Core/stm32f1xx_hal_msp.c
-    Core/stm32f1xx_it.c
+    Core/stm32f1xx_it.cpp
     Core/syscalls.c
     Core/sysmem.c
     Core/system_stm32f1xx.c

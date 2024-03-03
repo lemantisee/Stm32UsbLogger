@@ -95,7 +95,7 @@ USBD_StatusTypeDef USBD_CtlSendData(USBD_HandleTypeDef *pdev,
   pdev->ep_in[0].rem_length   = len;
 
   /* Start the transfer */
-  USBD_LL_Transmit(pdev, 0x00U, pbuf, len);
+  UsbCore::ref()->transmit(pdev, 0x00U, pbuf, len);
 
   return USBD_OK;
 }
@@ -112,7 +112,7 @@ USBD_StatusTypeDef USBD_CtlContinueSendData(USBD_HandleTypeDef *pdev,
                                             uint8_t *pbuf, uint16_t len)
 {
   /* Start the next transfer */
-  USBD_LL_Transmit(pdev, 0x00U, pbuf, len);
+  UsbCore::ref()->transmit(pdev, 0x00U, pbuf, len);
 
   return USBD_OK;
 }
@@ -134,7 +134,7 @@ USBD_StatusTypeDef USBD_CtlPrepareRx(USBD_HandleTypeDef *pdev,
   pdev->ep_out[0].rem_length   = len;
 
   /* Start the transfer */
-  USBD_LL_PrepareReceive(pdev, 0U, pbuf, len);
+  UsbCore::ref()->prepareReceive(pdev, 0U, pbuf, len);
 
   return USBD_OK;
 }
@@ -150,7 +150,7 @@ USBD_StatusTypeDef USBD_CtlPrepareRx(USBD_HandleTypeDef *pdev,
 USBD_StatusTypeDef USBD_CtlContinueRx(USBD_HandleTypeDef *pdev,
                                       uint8_t *pbuf, uint16_t len)
 {
-  USBD_LL_PrepareReceive(pdev, 0U, pbuf, len);
+  UsbCore::ref()->prepareReceive(pdev, 0U, pbuf, len);
 
   return USBD_OK;
 }
@@ -167,7 +167,7 @@ USBD_StatusTypeDef USBD_CtlSendStatus(USBD_HandleTypeDef *pdev)
   pdev->ep0_state = USBD_EP0_STATUS_IN;
 
   /* Start the transfer */
-  USBD_LL_Transmit(pdev, 0x00U, NULL, 0U);
+  UsbCore::ref()->transmit(pdev, 0x00U, NULL, 0U);
 
   return USBD_OK;
 }
@@ -184,7 +184,7 @@ USBD_StatusTypeDef USBD_CtlReceiveStatus(USBD_HandleTypeDef *pdev)
   pdev->ep0_state = USBD_EP0_STATUS_OUT;
 
   /* Start the transfer */
-  USBD_LL_PrepareReceive(pdev, 0U, NULL, 0U);
+  UsbCore::ref()->prepareReceive(pdev, 0U, NULL, 0U);
 
   return USBD_OK;
 }
@@ -198,7 +198,7 @@ USBD_StatusTypeDef USBD_CtlReceiveStatus(USBD_HandleTypeDef *pdev)
 */
 uint32_t USBD_GetRxCount(USBD_HandleTypeDef *pdev, uint8_t ep_addr)
 {
-  return USBD_LL_GetRxDataSize(pdev, ep_addr);
+  return UsbCore::ref()->getRxDataSize(pdev, ep_addr);
 }
 
 /**

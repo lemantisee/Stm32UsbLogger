@@ -2,6 +2,8 @@
 
 #include "usbd_def.h"
 
+#include <stdint.h>
+
 #ifndef USBD_DEBUG_LEVEL
 #define USBD_DEBUG_LEVEL           0U
 #endif /* USBD_DEBUG_LEVEL */
@@ -11,6 +13,10 @@
 class UsbCore
 {
 public:
+    UsbCore() = default;
+    virtual ~UsbCore() = default;
+
+    static void setImpl(UsbCore *impl);
     static UsbCore *ref();
     
     bool init(USBD_HandleTypeDef *pdev, USBD_DescriptorsTypeDef *pdesc, uint8_t id);
@@ -22,7 +28,6 @@ public:
     bool runTestMode(USBD_HandleTypeDef  *pdev);
     bool setClassConfig(USBD_HandleTypeDef  *pdev, uint8_t cfgidx);
     bool clearClassConfig(USBD_HandleTypeDef  *pdev, uint8_t cfgidx);
-    void delay(uint32_t ms);
 
     // Low level
 
@@ -63,38 +68,39 @@ public:
     bool deviceConnected(USBD_HandleTypeDef  *pdev);
     bool deviceDisconnected(USBD_HandleTypeDef  *pdev);
 
-
-
-
-
-private:
-    UsbCore() = default;
-    ~UsbCore() = default;
-};
-
-USBD_StatusTypeDef  USBD_LL_Init(USBD_HandleTypeDef *pdev);
-USBD_StatusTypeDef  USBD_LL_DeInit(USBD_HandleTypeDef *pdev);
-USBD_StatusTypeDef  USBD_LL_Start(USBD_HandleTypeDef *pdev);
-USBD_StatusTypeDef  USBD_LL_Stop(USBD_HandleTypeDef *pdev);
-USBD_StatusTypeDef  USBD_LL_OpenEP(USBD_HandleTypeDef *pdev,
+    virtual bool openEndpoint(USBD_HandleTypeDef *pdev,
                                    uint8_t  ep_addr,
                                    uint8_t  ep_type,
-                                   uint16_t ep_mps);
+                                   uint16_t ep_mps) = 0;
 
-USBD_StatusTypeDef  USBD_LL_CloseEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr);
-USBD_StatusTypeDef  USBD_LL_FlushEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr);
-USBD_StatusTypeDef  USBD_LL_StallEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr);
-USBD_StatusTypeDef  USBD_LL_ClearStallEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr);
-uint8_t             USBD_LL_IsStallEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr);
-USBD_StatusTypeDef  USBD_LL_SetUSBAddress(USBD_HandleTypeDef *pdev, uint8_t dev_addr);
-USBD_StatusTypeDef  USBD_LL_Transmit(USBD_HandleTypeDef *pdev,
+    virtual bool closeEndpoint(USBD_HandleTypeDef *pdev, uint8_t  ep_addr) = 0;
+    virtual bool flushEndpoint(USBD_HandleTypeDef *pdev, uint8_t ep_addr) = 0;
+    virtual bool stallEndpoint(USBD_HandleTypeDef *pdev, uint8_t ep_addr) = 0;
+    virtual bool clearStallEndpoint(USBD_HandleTypeDef *pdev, uint8_t ep_addr) = 0;
+    virtual bool isEndpointStall(USBD_HandleTypeDef *pdev, uint8_t ep_addr) const = 0;
+    virtual bool setUsbAddress(USBD_HandleTypeDef *pdev, uint8_t dev_addr) = 0;
+    virtual bool transmit(USBD_HandleTypeDef *pdev,
                                      uint8_t  ep_addr,
                                      uint8_t  *pbuf,
-                                     uint16_t  size);
+                                     uint16_t  size) = 0;
 
-USBD_StatusTypeDef  USBD_LL_PrepareReceive(USBD_HandleTypeDef *pdev,
-                                           uint8_t  ep_addr,
-                                           uint8_t  *pbuf,
-                                           uint16_t  size);
+    virtual bool prepareReceive(USBD_HandleTypeDef *pdev,
+                                    uint8_t  ep_addr,
+                                    uint8_t  *pbuf,
+                                    uint16_t  size) = 0;
 
-uint32_t USBD_LL_GetRxDataSize(USBD_HandleTypeDef *pdev, uint8_t  ep_addr);
+    virtual uint32_t getRxDataSize(USBD_HandleTypeDef *pdev, uint8_t  ep_addr) = 0;
+
+    virtual uint32_t *malloc(uint32_t size) = 0;
+    virtual void free(void *mem) = 0;
+
+protected:
+    virtual bool initInterface(USBD_HandleTypeDef *pdev) = 0;
+    virtual bool deinitInterface(USBD_HandleTypeDef *pdev) = 0;
+    virtual bool startInterface(USBD_HandleTypeDef *pdev) = 0;
+    virtual bool stopInterface(USBD_HandleTypeDef *pdev) = 0;
+
+private:
+};
+
+// USBD_StatusTypeDef  USBD_LL_Init(USBD_HandleTypeDef *pdev);

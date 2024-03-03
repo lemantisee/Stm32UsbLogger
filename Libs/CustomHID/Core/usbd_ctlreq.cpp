@@ -19,8 +19,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_ctlreq.h"
-#include "usbd_ioreq.h"
 
+#include <algorithm>
+
+#include "usbd_ioreq.h"
 #include "UsbCore.h"
 
 
@@ -261,8 +263,8 @@ USBD_StatusTypeDef  USBD_StdEPReq(USBD_HandleTypeDef *pdev,
             case USBD_STATE_ADDRESSED:
               if ((ep_addr != 0x00U) && (ep_addr != 0x80U))
               {
-                USBD_LL_StallEP(pdev, ep_addr);
-                USBD_LL_StallEP(pdev, 0x80U);
+                UsbCore::ref()->stallEndpoint(pdev, ep_addr);
+                UsbCore::ref()->stallEndpoint(pdev, 0x80U);
               }
               else
               {
@@ -276,7 +278,7 @@ USBD_StatusTypeDef  USBD_StdEPReq(USBD_HandleTypeDef *pdev,
                 if ((ep_addr != 0x00U) &&
                     (ep_addr != 0x80U) && (req->wLength == 0x00U))
                 {
-                  USBD_LL_StallEP(pdev, ep_addr);
+                  UsbCore::ref()->stallEndpoint(pdev, ep_addr);
                 }
               }
               USBD_CtlSendStatus(pdev);
@@ -296,8 +298,8 @@ USBD_StatusTypeDef  USBD_StdEPReq(USBD_HandleTypeDef *pdev,
             case USBD_STATE_ADDRESSED:
               if ((ep_addr != 0x00U) && (ep_addr != 0x80U))
               {
-                USBD_LL_StallEP(pdev, ep_addr);
-                USBD_LL_StallEP(pdev, 0x80U);
+                UsbCore::ref()->stallEndpoint(pdev, ep_addr);
+                UsbCore::ref()->stallEndpoint(pdev, 0x80U);
               }
               else
               {
@@ -310,7 +312,7 @@ USBD_StatusTypeDef  USBD_StdEPReq(USBD_HandleTypeDef *pdev,
               {
                 if ((ep_addr & 0x7FU) != 0x00U)
                 {
-                  USBD_LL_ClearStallEP(pdev, ep_addr);
+                  UsbCore::ref()->clearStallEndpoint(pdev, ep_addr);
                 }
                 USBD_CtlSendStatus(pdev);
               }
@@ -364,7 +366,7 @@ USBD_StatusTypeDef  USBD_StdEPReq(USBD_HandleTypeDef *pdev,
               {
                 pep->status = 0x0000U;
               }
-              else if (USBD_LL_IsStallEP(pdev, ep_addr))
+              else if (UsbCore::ref()->isEndpointStall(pdev, ep_addr))
               {
                 pep->status = 0x0001U;
               }
@@ -576,7 +578,7 @@ static void USBD_GetDescriptor(USBD_HandleTypeDef *pdev,
   {
     if ((len != 0U) && (req->wLength != 0U))
     {
-      len = MIN(len, req->wLength);
+      len = std::min(len, req->wLength);
       (void)USBD_CtlSendData(pdev, pbuf, len);
     }
 
@@ -610,7 +612,7 @@ static void USBD_SetAddress(USBD_HandleTypeDef *pdev,
     else
     {
       pdev->dev_address = dev_addr;
-      USBD_LL_SetUSBAddress(pdev, dev_addr);
+      UsbCore::ref()->setUsbAddress(pdev, dev_addr);
       USBD_CtlSendStatus(pdev);
 
       if (dev_addr != 0U)
@@ -854,8 +856,8 @@ void USBD_ParseSetupRequest(USBD_SetupReqTypedef *req, uint8_t *pdata)
 void USBD_CtlError(USBD_HandleTypeDef *pdev,
                    USBD_SetupReqTypedef *req)
 {
-  USBD_LL_StallEP(pdev, 0x80U);
-  USBD_LL_StallEP(pdev, 0U);
+  UsbCore::ref()->stallEndpoint(pdev, 0x80U);
+  UsbCore::ref()->stallEndpoint(pdev, 0U);
 }
 
 

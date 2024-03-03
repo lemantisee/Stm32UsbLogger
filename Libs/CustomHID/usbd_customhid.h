@@ -37,6 +37,7 @@ extern "C" {
   * @{
   */
 
+#define USBD_CUSTOMHID_OUTREPORT_BUF_SIZE     2
 
 /** @defgroup USBD_CUSTOM_HID_Exported_Defines
   * @{

@@ -25,8 +25,7 @@
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
-#include "usbd_conf.h"
+#include <stdint.h>
 
 /** @addtogroup STM32_USBD_DEVICE_LIBRARY
   * @{
@@ -274,8 +273,6 @@ typedef struct _USBD_HandleTypeDef
 
 #define LOBYTE(x)  ((uint8_t)((x) & 0x00FFU))
 #define HIBYTE(x)  ((uint8_t)(((x) & 0xFF00U) >> 8U))
-#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
-#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
 
 
 #if  defined ( __GNUC__ )

@@ -12,6 +12,11 @@ namespace {
   const uint8_t deviceId = 0;
 }
 
+UsbDevice::UsbDevice()
+{
+    UsbCore::setImpl(&mCore);
+}
+
 bool UsbDevice::init()
 {
   if (!UsbCore::ref()->init(&mHandle, &FS_Desc, deviceId)) {
