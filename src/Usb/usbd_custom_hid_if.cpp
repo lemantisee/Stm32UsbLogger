@@ -24,7 +24,7 @@ __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DES
   * @brief Public variables.
   * @{
   */
-extern USBD_HandleTypeDef hUsbDeviceFS;
+extern UsbHandle hUsbDeviceFS;
 
 /** @defgroup USBD_CUSTOM_HID_Private_FunctionPrototypes USBD_CUSTOM_HID_Private_FunctionPrototypes
   * @brief Private functions declaration.

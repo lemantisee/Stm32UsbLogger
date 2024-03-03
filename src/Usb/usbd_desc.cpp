@@ -1,5 +1,5 @@
 #include "usbd_desc.h"
-#include "usbd_ctlreq.h"
+// #include "usbd_ctlreq.h"
 
 #include <stm32f1xx.h>
 #include "UsbCore.h"
@@ -7,6 +7,47 @@
 namespace
 {
 const uint32_t USBD_MAX_STR_DESC_SIZ = 512;
+
+uint8_t USBD_GetLen(uint8_t *buf)
+{
+  uint8_t  len = 0U;
+
+  while (*buf != '\0')
+  {
+    len++;
+    buf++;
+  }
+
+  return len;
+}
+
+/**
+  * @brief  USBD_GetString
+  *         Convert Ascii string into unicode one
+  * @param  desc : descriptor buffer
+  * @param  unicode : Formatted string buffer (unicode)
+  * @param  len : descriptor length
+  * @retval None
+  */
+void USBD_GetString(uint8_t *desc, uint8_t *unicode, uint16_t *len)
+{
+  uint8_t idx = 0U;
+
+  if (desc != NULL)
+  {
+    *len = (uint16_t)USBD_GetLen(desc) * 2U + 2U;
+    unicode[idx++] = *(uint8_t *)(void *)len;
+    unicode[idx++] = USB_DESC_TYPE_STRING;
+
+    while (*desc != '\0')
+    {
+      unicode[idx++] = *desc++;
+      unicode[idx++] =  0U;
+    }
+  }
+}
+
+
 } // namespace
 
 

@@ -34,7 +34,8 @@ static void PCD_SetupStageCallback(PCD_HandleTypeDef *hpcd)
 void HAL_PCD_SetupStageCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->setupStage((USBD_HandleTypeDef*)hpcd->pData, (uint8_t *)hpcd->Setup);
+  UsbHandle *handle = (UsbHandle*)hpcd->pData;
+  handle->setup((uint8_t *)hpcd->Setup);
 }
 
 #if (USE_HAL_PCD_REGISTER_CALLBACKS == 1U)
@@ -43,7 +44,8 @@ static void PCD_DataOutStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 void HAL_PCD_DataOutStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->dataOutStage((USBD_HandleTypeDef*)hpcd->pData, epnum, hpcd->OUT_ep[epnum].xfer_buff);
+  UsbHandle *handle = (UsbHandle*)hpcd->pData;
+  handle->dataOutStage(epnum, hpcd->OUT_ep[epnum].xfer_buff);
 }
 
 #if (USE_HAL_PCD_REGISTER_CALLBACKS == 1U)
@@ -52,7 +54,8 @@ static void PCD_DataInStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 void HAL_PCD_DataInStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->dataInStage((USBD_HandleTypeDef*)hpcd->pData, epnum, hpcd->IN_ep[epnum].xfer_buff);
+  UsbHandle *handle = (UsbHandle*)hpcd->pData;
+  handle->dataInStage(epnum, hpcd->IN_ep[epnum].xfer_buff);
 }
 
 #if (USE_HAL_PCD_REGISTER_CALLBACKS == 1U)
@@ -61,7 +64,8 @@ static void PCD_SOFCallback(PCD_HandleTypeDef *hpcd)
 void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->SOF((USBD_HandleTypeDef*)hpcd->pData);
+  UsbHandle *handle = (UsbHandle*)hpcd->pData;
+  handle->sof();
 }
 
 #if (USE_HAL_PCD_REGISTER_CALLBACKS == 1U)
@@ -75,8 +79,9 @@ void HAL_PCD_ResetCallback(PCD_HandleTypeDef *hpcd)
     return;
   }
 
-  UsbCore::ref()->setSpeed((USBD_HandleTypeDef*)hpcd->pData, USBD_SPEED_FULL);
-  UsbCore::ref()->resetDevice((USBD_HandleTypeDef*)hpcd->pData);
+  UsbHandle *handle = (UsbHandle*)hpcd->pData;
+  handle->setSpeed(USBD_SPEED_FULL);
+  handle->resetUsb();
 }
 
 #if (USE_HAL_PCD_REGISTER_CALLBACKS == 1U)
@@ -85,7 +90,8 @@ static void PCD_SuspendCallback(PCD_HandleTypeDef *hpcd)
 void HAL_PCD_SuspendCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->suspend((USBD_HandleTypeDef*)hpcd->pData);
+  UsbHandle *handle = (UsbHandle*)hpcd->pData;
+  handle->suspend();
   /* Enter in STOP mode. */
   if (hpcd->Init.low_power_enable)
   {
@@ -106,7 +112,8 @@ static void PCD_ResumeCallback(PCD_HandleTypeDef *hpcd)
 void HAL_PCD_ResumeCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->resume((USBD_HandleTypeDef*)hpcd->pData);
+    UsbHandle *handle = (UsbHandle*)hpcd->pData;
+    handle->resume();
 }
 
 /**
@@ -121,7 +128,8 @@ static void PCD_ISOOUTIncompleteCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 void HAL_PCD_ISOOUTIncompleteCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-   UsbCore::ref()->isoOUTIncomplete((USBD_HandleTypeDef*)hpcd->pData, epnum);
+    UsbHandle *handle = (UsbHandle*)hpcd->pData;
+    handle->isoOUTIncomplete(epnum);
 }
 
 /**
@@ -136,7 +144,8 @@ static void PCD_ISOINIncompleteCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 void HAL_PCD_ISOINIncompleteCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->isoInIncomplete((USBD_HandleTypeDef*)hpcd->pData, epnum);
+  UsbHandle *handle = (UsbHandle*)hpcd->pData;
+  handle->isoInIncomplete(epnum);
 }
 
 /**
@@ -150,7 +159,6 @@ static void PCD_ConnectCallback(PCD_HandleTypeDef *hpcd)
 void HAL_PCD_ConnectCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->deviceConnected((USBD_HandleTypeDef*)hpcd->pData);
 }
 
 /**
@@ -164,7 +172,8 @@ static void PCD_DisconnectCallback(PCD_HandleTypeDef *hpcd)
 void HAL_PCD_DisconnectCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
-  UsbCore::ref()->deviceDisconnected((USBD_HandleTypeDef*)hpcd->pData);
+  UsbHandle *handle = (UsbHandle*)hpcd->pData;
+  handle->disconnect();
 }
 
 /**

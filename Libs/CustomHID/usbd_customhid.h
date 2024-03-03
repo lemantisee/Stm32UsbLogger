@@ -26,7 +26,8 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-#include  "usbd_ioreq.h"
+
+#include "UsbHandle.h"
 
 /** @addtogroup STM32_USB_DEVICE_LIBRARY
   * @{
@@ -138,13 +139,13 @@ extern USBD_ClassTypeDef  USBD_CUSTOM_HID;
 /** @defgroup USB_CORE_Exported_Functions
   * @{
   */
-uint8_t USBD_CUSTOM_HID_SendReport(USBD_HandleTypeDef *pdev,
+uint8_t USBD_CUSTOM_HID_SendReport(UsbHandle *pdev,
                                    uint8_t *report,
                                    uint16_t len);
 
 
 
-uint8_t  USBD_CUSTOM_HID_RegisterInterface(USBD_HandleTypeDef   *pdev,
+uint8_t  USBD_CUSTOM_HID_RegisterInterface(UsbHandle   *pdev,
                                            USBD_CUSTOM_HID_ItfTypeDef *fops);
 
 /**

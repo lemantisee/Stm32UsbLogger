@@ -9,24 +9,21 @@
 #include <cstring>
 
 namespace {
-  const uint8_t deviceId = 0;
+const uint8_t deviceId = 0;
 }
 
-UsbDevice::UsbDevice()
-{
-    UsbCore::setImpl(&mCore);
-}
+UsbDevice::UsbDevice() { UsbCore::setImpl(&mCore); }
 
 bool UsbDevice::init()
 {
-  if (!UsbCore::ref()->init(&mHandle, &FS_Desc, deviceId)) {
-      return false;
-  }
+    if (!mHandle.init(&FS_Desc, deviceId)) {
+        return false;
+    }
 
-  mHandle.pClass = &USBD_CUSTOM_HID;
-  mHandle.pUserData = &USBD_CustomHID_fops_FS;
+    mHandle.registerClass(&USBD_CUSTOM_HID);
+    mHandle.pUserData = &USBD_CustomHID_fops_FS;
 
-  return UsbCore::ref()->start(&mHandle);
+    return mHandle.start();
 }
 
 bool UsbDevice::sendData(const char *data)

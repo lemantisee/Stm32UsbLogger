@@ -11,7 +11,8 @@ public:
 
     bool init();
     bool sendData(const char *data);
+
 private:
     UsbCoreF103 mCore;
-    USBD_HandleTypeDef mHandle;
+    UsbHandle mHandle;
 };
