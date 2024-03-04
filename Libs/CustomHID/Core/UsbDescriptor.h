@@ -13,6 +13,6 @@ public:
     virtual uint8_t *GetInterfaceStrDescriptor(UsbSpeed speed, uint16_t *length) = 0;
 
     #if (USBD_LPM_ENABLED == 1U)
-    virtual uint8_t *GetBOSDescriptor(USBD_SpeedTypeDef speed, uint16_t *length) = 0;
+    virtual uint8_t *GetBOSDescriptor(UsbSpeed speed, uint16_t *length) = 0;
     #endif
 };

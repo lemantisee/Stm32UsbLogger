@@ -63,8 +63,9 @@
 #ifndef USBD_CUSTOMHID_OUTREPORT_BUF_SIZE
 #define USBD_CUSTOMHID_OUTREPORT_BUF_SIZE  0x02U
 #endif /* USBD_CUSTOMHID_OUTREPORT_BUF_SIZE */
+
 #ifndef USBD_CUSTOM_HID_REPORT_DESC_SIZE
-#define USBD_CUSTOM_HID_REPORT_DESC_SIZE   163U
+#define USBD_CUSTOM_HID_REPORT_DESC_SIZE   33
 #endif /* USBD_CUSTOM_HID_REPORT_DESC_SIZE */
 
 #define CUSTOM_HID_DESCRIPTOR_TYPE           0x21U
@@ -112,57 +113,11 @@ typedef struct
   CUSTOM_HID_StateTypeDef     state;
 }
 USBD_CUSTOM_HID_HandleTypeDef;
-/**
-  * @}
-  */
 
-
-
-/** @defgroup USBD_CORE_Exported_Macros
-  * @{
-  */
-
-/**
-  * @}
-  */
-
-/** @defgroup USBD_CORE_Exported_Variables
-  * @{
-  */
-
-extern USBD_ClassTypeDef  USBD_CUSTOM_HID;
-#define USBD_CUSTOM_HID_CLASS    &USBD_CUSTOM_HID
-/**
-  * @}
-  */
-
-/** @defgroup USB_CORE_Exported_Functions
-  * @{
-  */
 uint8_t USBD_CUSTOM_HID_SendReport(UsbHandle *pdev,
                                    uint8_t *report,
                                    uint16_t len);
 
 
 
-uint8_t  USBD_CUSTOM_HID_RegisterInterface(UsbHandle   *pdev,
-                                           USBD_CUSTOM_HID_ItfTypeDef *fops);
-
-/**
-  * @}
-  */
-
-// #ifdef __cplusplus
-// }
-// #endif
-
 #endif  /* __USB_CUSTOMHID_H */
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -2,9 +2,11 @@
 
 #include "UsbEndpoint.h"
 #include "UsbDescriptor.h"
+#include "UsbClass.h"
 
-typedef struct _USBD_HandleTypeDef
+class UsbHandle
 {
+public:
     enum EndpointType {
         EndpointControl = 0,
         EndpointIsochronous,
@@ -43,7 +45,7 @@ typedef struct _USBD_HandleTypeDef
     void setSpeed(UsbSpeed speed);
     bool setClassConfig(uint8_t cfgidx);
     bool clearClassConfig(uint8_t cfgidx);
-    bool registerClass(USBD_ClassTypeDef *pclass);
+    bool registerClass(UsbClass *pclass);
 
     bool dataOutStage(uint8_t epnum, uint8_t *pdata);
     bool dataInStage(uint8_t epnum, uint8_t *pdata);
@@ -111,6 +113,6 @@ private:
     UsbSpeed mSpeed = USBD_SPEED_HIGH;
     USBD_SetupReqTypedef mRequest;
     UsbDescriptor *mDescriptor = nullptr;
-    USBD_ClassTypeDef *mClassType = nullptr;
+    UsbClass *mClassType = nullptr;
 
-} UsbHandle;
+};

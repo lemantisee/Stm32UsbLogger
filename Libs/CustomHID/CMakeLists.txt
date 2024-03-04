@@ -1,6 +1,7 @@
 project(CustomHID)
 
 add_library(${PROJECT_NAME} STATIC
+    Core/UsbClass.h
     Core/UsbEndpoint.h Core/UsbEndpoint.cpp
     Core/UsbCore.h Core/UsbCore.cpp
     Core/UsbDescriptor.h
@@ -8,6 +9,7 @@ add_library(${PROJECT_NAME} STATIC
     Core/UsbSetupRequest.h Core/UsbSetupRequest.cpp
     Core/usbd_def.h
 
+    UsbCustomHid.h UsbCustomHid.cpp
     usbd_customhid.h usbd_customhid.cpp
 )
 

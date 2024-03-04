@@ -19,7 +19,7 @@ bool UsbDevice::init()
         return false;
     }
 
-    mHandle.registerClass(&USBD_CUSTOM_HID);
+    mHandle.registerClass(&mCustomHid);
     mHandle.pUserData = &USBD_CustomHID_fops_FS;
 
     return mHandle.start();

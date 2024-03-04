@@ -127,32 +127,32 @@ extern "C" {
 #define USB_MAX_EP0_SIZE                                64U
 
 
-struct _USBD_HandleTypeDef;
+// struct _USBD_HandleTypeDef;
 
-typedef struct _Device_cb
-{
-  uint8_t (*Init)(struct _USBD_HandleTypeDef *pdev, uint8_t cfgidx);
-  uint8_t (*DeInit)(struct _USBD_HandleTypeDef *pdev, uint8_t cfgidx);
-  /* Control Endpoints*/
-  uint8_t (*Setup)(struct _USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef  *req);
-  uint8_t (*EP0_TxSent)(struct _USBD_HandleTypeDef *pdev);
-  uint8_t (*EP0_RxReady)(struct _USBD_HandleTypeDef *pdev);
-  /* Class Specific Endpoints*/
-  uint8_t (*DataIn)(struct _USBD_HandleTypeDef *pdev, uint8_t epnum);
-  uint8_t (*DataOut)(struct _USBD_HandleTypeDef *pdev, uint8_t epnum);
-  uint8_t (*SOF)(struct _USBD_HandleTypeDef *pdev);
-  uint8_t (*IsoINIncomplete)(struct _USBD_HandleTypeDef *pdev, uint8_t epnum);
-  uint8_t (*IsoOUTIncomplete)(struct _USBD_HandleTypeDef *pdev, uint8_t epnum);
+// typedef struct _Device_cb
+// {
+//   uint8_t (*Init)(struct _USBD_HandleTypeDef *pdev, uint8_t cfgidx);
+//   uint8_t (*DeInit)(struct _USBD_HandleTypeDef *pdev, uint8_t cfgidx);
+//   /* Control Endpoints*/
+//   uint8_t (*Setup)(struct _USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef  *req);
+//   uint8_t (*EP0_TxSent)(struct _USBD_HandleTypeDef *pdev);
+//   uint8_t (*EP0_RxReady)(struct _USBD_HandleTypeDef *pdev);
+//   /* Class Specific Endpoints*/
+//   uint8_t (*DataIn)(struct _USBD_HandleTypeDef *pdev, uint8_t epnum);
+//   uint8_t (*DataOut)(struct _USBD_HandleTypeDef *pdev, uint8_t epnum);
+//   uint8_t (*SOF)(struct _USBD_HandleTypeDef *pdev);
+//   uint8_t (*IsoINIncomplete)(struct _USBD_HandleTypeDef *pdev, uint8_t epnum);
+//   uint8_t (*IsoOUTIncomplete)(struct _USBD_HandleTypeDef *pdev, uint8_t epnum);
 
-  uint8_t  *(*GetHSConfigDescriptor)(uint16_t *length);
-  uint8_t  *(*GetFSConfigDescriptor)(uint16_t *length);
-  uint8_t  *(*GetOtherSpeedConfigDescriptor)(uint16_t *length);
-  uint8_t  *(*GetDeviceQualifierDescriptor)(uint16_t *length);
-#if (USBD_SUPPORT_USER_STRING_DESC == 1U)
-  uint8_t  *(*GetUsrStrDescriptor)(struct _USBD_HandleTypeDef *pdev, uint8_t index,  uint16_t *length);
-#endif
+//   uint8_t  *(*GetHSConfigDescriptor)(uint16_t *length);
+//   uint8_t  *(*GetFSConfigDescriptor)(uint16_t *length);
+//   uint8_t  *(*GetOtherSpeedConfigDescriptor)(uint16_t *length);
+//   uint8_t  *(*GetDeviceQualifierDescriptor)(uint16_t *length);
+// #if (USBD_SUPPORT_USER_STRING_DESC == 1U)
+//   uint8_t  *(*GetUsrStrDescriptor)(struct _USBD_HandleTypeDef *pdev, uint8_t index,  uint16_t *length);
+// #endif
 
-} USBD_ClassTypeDef;
+// } USBD_ClassTypeDef;
 
 /* Following USB Device Speed */
 enum UsbSpeed

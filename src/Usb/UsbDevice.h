@@ -2,6 +2,7 @@
 
 #include "UsbCoreF103.h"
 #include "UsbDeviceDescriptor.h"
+#include "UsbCustomHid.h"
 
 class UsbDevice
 {
@@ -16,4 +17,5 @@ private:
     UsbCoreF103 mCore;
     UsbHandle mHandle;
     UsbDeviceDescriptor mDescriptor;
+    UsbCustomHid mCustomHid;
 };
