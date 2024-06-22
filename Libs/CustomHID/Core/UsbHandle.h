@@ -1,8 +1,14 @@
 #pragma once
 
+#include <span>
+
 #include "UsbEndpoint.h"
-#include "UsbDescriptor.h"
-#include "UsbClass.h"
+#include "usbd_def.h"
+
+class UsbClass;
+class UsbDriver;
+class UsbDescriptor;
+class UsbSetupRequest;
 
 class UsbHandle
 {
@@ -14,23 +20,10 @@ public:
         EndpointInterrupt,
     };
 
-    // enum Speed {
-    //     SpeedHigh = 0,
-    //     SpeedFull,
-    //     SpeedLow,
-    // };
-
-    UsbEndpoint ep_in[16];
-    UsbEndpoint ep_out[16];
-
-    void *mClassData = nullptr;
-    void *pUserData = nullptr;
-    void *pData = nullptr;
-
-    bool init(UsbDescriptor *descriptor, uint8_t id_);
+    bool init(const UsbDescriptor *descriptor, uint8_t id, UsbDriver *driver);
     bool deinit();
 
-    void setup(uint8_t *psetup);
+    void setup(const uint8_t *psetup);
 
     bool start();
     bool stop();
@@ -42,23 +35,23 @@ public:
 
     bool isConfigured() const;
 
-    void setSpeed(UsbSpeed speed);
-    bool setClassConfig(uint8_t cfgidx);
-    bool clearClassConfig(uint8_t cfgidx);
     bool registerClass(UsbClass *pclass);
 
     bool dataOutStage(uint8_t epnum, uint8_t *pdata);
     bool dataInStage(uint8_t epnum, uint8_t *pdata);
+
+    bool sendData(std::span<uint8_t> data);
+    bool sendData(uint8_t data);
+    bool receiveData(std::span<uint8_t> buffer);
     bool isoInIncomplete(uint8_t epnum);
     bool isoOUTIncomplete(uint8_t epnum);
 
-    uint32_t getRxCount(uint8_t ep_addr);
-    bool sendData(uint8_t *pbuf, uint16_t len);
-    bool continueSendData(uint8_t *pbuf, uint16_t len);
-    bool prepareRx(uint8_t *pbuf, uint16_t len);
-    bool sendStatus();
+    void setSelfPowered(bool state);
 
-    void stallEndpoints();
+    UsbDriver *getDriver();
+
+    bool openEndpoint(uint8_t address, uint16_t size, EndpointType type);
+    bool closeEndpoint(uint8_t address);
 
 private:
     enum DeviceState {
@@ -78,41 +71,51 @@ private:
         EndpointStall,
     };
 
-    bool onDeviceRequest(USBD_SetupReqTypedef *req);
-    bool onInterfaceRequest(USBD_SetupReqTypedef *req);
-    bool onEndpointRequest(USBD_SetupReqTypedef *req);
+    bool onDeviceRequest(const UsbSetupRequest &req);
+    bool onInterfaceRequest(const UsbSetupRequest &req);
+    bool onEndpointRequest(const UsbSetupRequest &req);
 
-    void openOutEndpoint0();
-    void openInEndpoint0();
+    bool onStandartRequest(const UsbSetupRequest &req);
+    bool onSetFeature(const UsbSetupRequest &req);
+    bool onClearFeature(const UsbSetupRequest &req);
+    bool onGetEndpointStatus(const UsbSetupRequest &req);
 
     bool receiveStatus();
-    bool continueRx(uint8_t *pbuf, uint16_t len);
+    bool continueReceiveData(std::span<uint8_t> buffer);
 
-    void setConfig(USBD_SetupReqTypedef *req);
-    void getConfig(USBD_SetupReqTypedef *req);
-    void getDescriptor(USBD_SetupReqTypedef *req);
-    void setAddress(USBD_SetupReqTypedef *req);
-    void getStatus(USBD_SetupReqTypedef *req);
-    void setFeature(USBD_SetupReqTypedef *req);
-    void clearFeature(USBD_SetupReqTypedef *req);
+    bool setClassConfig(uint8_t configIndex);
+    bool clearClassConfig(uint8_t configIndex);
+    bool setConfig(const UsbSetupRequest &req);
+    bool sendConfig(const UsbSetupRequest &req);
+    bool sendDescriptor(const UsbSetupRequest &req);
+    bool setAddress(const UsbSetupRequest &req);
+    bool sendStatus(const UsbSetupRequest &req);
+    bool setFeature(const UsbSetupRequest &req);
+    bool clearFeature(const UsbSetupRequest &req);
 
-    bool isEndpointIn(uint8_t epAddress) const;
+    uint32_t getRxCount(uint8_t ep_addr);
+    bool continueSendData(std::span<uint8_t> data);
+    bool sendStatus();
+
+    UsbEndpoint *getEndpoint(uint8_t epAddress);
+    void stallEndpoints();
 
     uint8_t mId = 0;
     DeviceState mState = DeviceDefault;
-    uint32_t mConfigIndex = 0;
+    uint8_t mConfigIndex = 0;
     uint32_t mConfigDefault = 0;
     uint32_t mConfigStatus = 0;
     DeviceState mDeviceOldState = DeviceDefault;
     uint8_t mAddress = 0;
-    uint8_t mConnectionStatus = 0;
-    uint8_t mTestMode = 0;
-    uint32_t mRemoteWakeup = 0;
+    bool mRemoteWakeup = false;
     EndpointState mEndpoint0State = EndpointIdle;
     uint32_t mEndpoint0Size = 0;
-    UsbSpeed mSpeed = USBD_SPEED_HIGH;
-    USBD_SetupReqTypedef mRequest;
-    UsbDescriptor *mDescriptor = nullptr;
+    usb::UsbSpeed mSpeed = usb::HighSpeed;
+    const UsbDescriptor *mDescriptor = nullptr;
     UsbClass *mClassType = nullptr;
+    UsbDriver *mDriver = nullptr;
+    bool mSelfPowered = true;
 
+    UsbEndpoint mInEndpoints[16];
+    UsbEndpoint mOutEndpoints[16];
 };

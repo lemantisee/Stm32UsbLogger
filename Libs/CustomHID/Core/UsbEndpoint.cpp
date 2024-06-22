@@ -4,6 +4,6 @@
 
 void UsbEndpoint::setLength(uint16_t length)
 {
-    total_length = length;
-    rem_length = length;
+    lengthToSend = length;
+    currentLength = length;
 }

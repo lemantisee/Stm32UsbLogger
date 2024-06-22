@@ -1,18 +1,25 @@
 #pragma once
 
 #include "usbd_def.h"
+#include <stdint.h>
+#include <span>
 
-class UsbDescriptor {
+class UsbDescriptor
+{
 public:
-    virtual uint8_t *GetDeviceDescriptor(UsbSpeed speed, uint16_t *length) = 0;
-    virtual uint8_t *GetLangIDStrDescriptor(UsbSpeed speed, uint16_t *length) = 0;
-    virtual uint8_t *GetManufacturerStrDescriptor(UsbSpeed speed, uint16_t *length) = 0;
-    virtual uint8_t *GetProductStrDescriptor(UsbSpeed speed, uint16_t *length) = 0;
-    virtual uint8_t *GetSerialStrDescriptor(UsbSpeed speed, uint16_t *length) = 0;
-    virtual uint8_t *GetConfigurationStrDescriptor(UsbSpeed speed, uint16_t *length) = 0;
-    virtual uint8_t *GetInterfaceStrDescriptor(UsbSpeed speed, uint16_t *length) = 0;
+    enum StringIndex {
+        LanguageIdStringIndex = 0,
+        ManufactureStringIndex = 1,
+        ProductStringIndex = 2,
+        SerialStringIndex = 3,
+        ConfigStringIndex = 4,
+        InterfaceStringIndex = 5,
+    };
 
-    #if (USBD_LPM_ENABLED == 1U)
-    virtual uint8_t *GetBOSDescriptor(UsbSpeed speed, uint16_t *length) = 0;
-    #endif
+    virtual std::span<uint8_t> GetDeviceDescriptor(usb::UsbSpeed speed) const = 0;
+
+    virtual std::span<uint8_t> getStringDescriptor(usb::UsbSpeed speed, StringIndex strIndex) const
+        = 0;
+
+    virtual std::span<uint8_t> getBOSDescriptor(usb::UsbSpeed speed) const = 0;
 };

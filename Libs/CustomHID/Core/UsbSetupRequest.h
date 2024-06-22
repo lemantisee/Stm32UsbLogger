@@ -4,8 +4,12 @@
 
 #include <optional>
 
-typedef struct usb_setup_req
+#include "usbd_def.h"
+#include "UsbDescriptor.h"
+
+class UsbSetupRequest
 {
+public:
     enum RecipientType {
         RecipientDevice = 0,
         RecipientInterface = 1,
@@ -32,18 +36,24 @@ typedef struct usb_setup_req
         RequestVendor = 64,
     };
 
+    enum FeatureType {
+        FeatureHaltEndpoint = 0,
+        FeatureRemoteWakeUp = 1,
+        FeatureTestMode = 2,
+    };
+
     RecipientType getRecipient() const;
     Request getRequest() const;
     RequestType getRequestType() const;
-    void parse(uint8_t *pdata);
+    void parse(const uint8_t *pdata);
 
     uint16_t getLength() const;
     uint8_t getEndpointAddress() const;
     uint8_t getInterfaceIndex() const;
     std::optional<uint8_t> getDeviceAddress() const;
-    uint8_t getDescriptorType() const;
-    uint8_t getStringIndex() const;
-    uint8_t getFeatureRequest() const;
+    usb::DescriptorType getDescriptorType() const;
+    UsbDescriptor::StringIndex getStringIndex() const;
+    FeatureType getFeatureRequest() const;
     uint8_t getConfigIndex() const;
     uint8_t getProtocol() const;
     uint8_t getIdleState() const;
@@ -56,5 +66,4 @@ private:
     uint16_t mLength = 0;
     uint16_t mIndex = 0;
     uint16_t mValue = 0;
-
-} USBD_SetupReqTypedef;
+};

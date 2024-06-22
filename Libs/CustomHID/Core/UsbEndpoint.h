@@ -5,10 +5,10 @@
 struct UsbEndpoint
 {
   uint32_t status = 0;
-  bool is_used = false;
-  uint32_t total_length = 0;
-  uint32_t rem_length = 0;
-  uint32_t maxpacket = 0;
+  bool isUsed = false;
+  uint32_t lengthToSend = 0;
+  uint32_t currentLength = 0;
+  uint32_t maxPacketLength = 0;
 
   void setLength(uint16_t length);
 };

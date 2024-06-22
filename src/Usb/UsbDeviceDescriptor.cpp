@@ -5,94 +5,110 @@
 
 namespace {
 
-const uint32_t USBD_MAX_STR_DESC_SIZ = 512;
+const uint32_t stringDescriptorMaxSize = 512;
 
-const uint16_t USBD_VID = 1155;
-const uint16_t USBD_PID_FS = 22352;
-const uint16_t USBD_LANGID_STRING = 1033;
-const uint8_t USB_SIZ_STRING_SERIAL = 0x1A;
+const uint16_t usbdVid = 1155;
+const uint16_t usbPid = 22352;
+const uint16_t languageIdString = 1033;
+const uint8_t stringSerialSize = 0x1A;
+const uint8_t deviceDescriptorSize = 0x12;
+const uint8_t languageIdStringSize = 0x04;
 
-const char *USBD_MANUFACTURER_STRING = "STMicroelectronics";
-const char *USBD_PRODUCT_STRING_FS = "STM32 Custom Human interface";
-const char *USBD_CONFIGURATION_STRING_FS = "Custom HID Config";
-const char *USBD_INTERFACE_STRING_FS = "Custom HID Interface";
+const char *manufacturerString = "STMicroelectronics";
+const char *productString = "STM32 Custom Human interface";
+const char *configurationString = "Custom HID Config";
+const char *interfaceString = "Custom HID Interface";
 
-__ALIGN_BEGIN uint8_t USBD_FS_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END = {
-    0x12,                 /*bLength */
-    USB_DESC_TYPE_DEVICE, /*bDescriptorType*/
-    0x00,                 /*bcdUSB */
+uint8_t loByte(uint16_t value) { return uint8_t(value & 0x00FF); }
+uint8_t hiByte(uint16_t value) { return uint8_t((value & 0xFF00) >> 8); }
+
+__ALIGN_BEGIN uint8_t deviceDescriptor[deviceDescriptorSize] __ALIGN_END = {
+    deviceDescriptorSize,  /*bLength */
+    usb::DeviceDescriptor, /*bDescriptorType*/
+    0x00,                  /*bcdUSB */
     0x02,
-    0x00,                /*bDeviceClass*/
-    0x00,                /*bDeviceSubClass*/
-    0x00,                /*bDeviceProtocol*/
-    USB_MAX_EP0_SIZE,    /*bMaxPacketSize*/
-    LOBYTE(USBD_VID),    /*idVendor*/
-    HIBYTE(USBD_VID),    /*idVendor*/
-    LOBYTE(USBD_PID_FS), /*idProduct*/
-    HIBYTE(USBD_PID_FS), /*idProduct*/
-    0x00,                /*bcdDevice rel. 2.00*/
+    0x00,               /*bDeviceClass*/
+    0x00,               /*bDeviceSubClass*/
+    0x00,               /*bDeviceProtocol*/
+    usb::endpont0_Size, /*bMaxPacketSize*/
+    loByte(usbdVid),    /*idVendor*/
+    hiByte(usbdVid),    /*idVendor*/
+    loByte(usbPid),     /*idProduct*/
+    hiByte(usbPid),     /*idProduct*/
+    0x00,               /*bcdDevice rel. 2.00*/
     0x02,
-    USBD_IDX_MFC_STR,          /*Index of manufacturer  string*/
-    USBD_IDX_PRODUCT_STR,      /*Index of product string*/
-    USBD_IDX_SERIAL_STR,       /*Index of serial number string*/
-    USBD_MAX_NUM_CONFIGURATION /*bNumConfigurations*/
+    UsbDescriptor::ManufactureStringIndex, /*Index of manufacturer  string*/
+    UsbDescriptor::ProductStringIndex,     /*Index of product string*/
+    UsbDescriptor::SerialStringIndex,      /*Index of serial number string*/
+    usb::maxConfigurationNumber            /*bNumConfigurations*/
 };
 
-__ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __ALIGN_END
-    = {USB_LEN_LANGID_STR_DESC, USB_DESC_TYPE_STRING, LOBYTE(USBD_LANGID_STRING),
-       HIBYTE(USBD_LANGID_STRING)};
+__ALIGN_BEGIN uint8_t languageIdDescriptor[languageIdStringSize] __ALIGN_END
+    = {languageIdStringSize, usb::StringDescriptor, loByte(languageIdString),
+       hiByte(languageIdString)};
 
 /* Internal string descriptor. */
-__ALIGN_BEGIN uint8_t USBD_StrDesc[USBD_MAX_STR_DESC_SIZ] __ALIGN_END;
+__ALIGN_BEGIN uint8_t stringDescriptor[stringDescriptorMaxSize] __ALIGN_END;
 
-__ALIGN_BEGIN uint8_t USBD_StringSerial[USB_SIZ_STRING_SERIAL] __ALIGN_END = {
-    USB_SIZ_STRING_SERIAL,
-    USB_DESC_TYPE_STRING,
+__ALIGN_BEGIN uint8_t stringSerail[stringSerialSize] __ALIGN_END = {
+    stringSerialSize,
+    usb::StringDescriptor,
 };
 
 } // namespace
 
-uint8_t *UsbDeviceDescriptor::GetDeviceDescriptor(UsbSpeed speed, uint16_t *length)
+std::span<uint8_t> UsbDeviceDescriptor::getStringDescriptor(usb::UsbSpeed speed,
+                                                            StringIndex strIndex) const
 {
-    *length = sizeof(USBD_FS_DeviceDesc);
-    return USBD_FS_DeviceDesc;
+    switch (strIndex) {
+    case LanguageIdStringIndex: return GetLangIDStrDescriptor(speed);
+    case ManufactureStringIndex: return GetManufacturerStrDescriptor(speed);
+    case ProductStringIndex: return GetProductStrDescriptor(speed);
+    case SerialStringIndex: return GetSerialStrDescriptor(speed);
+    case ConfigStringIndex: return GetConfigurationStrDescriptor(speed);
+    case InterfaceStringIndex: return GetInterfaceStrDescriptor(speed);
+    default: break;
+    }
+
+    return {};
 }
 
-uint8_t *UsbDeviceDescriptor::GetLangIDStrDescriptor(UsbSpeed speed, uint16_t *length)
+std::span<uint8_t> UsbDeviceDescriptor::GetDeviceDescriptor(usb::UsbSpeed speedgth) const
 {
-    *length = sizeof(USBD_LangIDDesc);
-    return USBD_LangIDDesc;
+    return std::span(deviceDescriptor);
 }
 
-uint8_t *UsbDeviceDescriptor::GetManufacturerStrDescriptor(UsbSpeed speed, uint16_t *length)
+std::span<uint8_t> UsbDeviceDescriptor::getBOSDescriptor(usb::UsbSpeed speed) const { return {}; }
+
+std::span<uint8_t> UsbDeviceDescriptor::GetLangIDStrDescriptor(usb::UsbSpeed speedgth) const
 {
-    asciiToUnicode((char *)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
-    return USBD_StrDesc;
+    return std::span(languageIdDescriptor);
 }
 
-uint8_t *UsbDeviceDescriptor::GetProductStrDescriptor(UsbSpeed speed, uint16_t *length)
+std::span<uint8_t> UsbDeviceDescriptor::GetManufacturerStrDescriptor(usb::UsbSpeed) const
 {
-    asciiToUnicode((char *)USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);
-    return USBD_StrDesc;
+    return getDescriptor((char *)manufacturerString);
 }
 
-uint8_t *UsbDeviceDescriptor::GetSerialStrDescriptor(UsbSpeed speed, uint16_t *length)
+std::span<uint8_t> UsbDeviceDescriptor::GetProductStrDescriptor(usb::UsbSpeed) const
 {
-    *length = USB_SIZ_STRING_SERIAL;
-    fillSerialNumber(&USBD_StringSerial[2], 8, &USBD_StringSerial[18], 4);
-    return USBD_StringSerial;
+    return getDescriptor((char *)productString);
 }
 
-uint8_t *UsbDeviceDescriptor::GetConfigurationStrDescriptor(UsbSpeed speed, uint16_t *length)
+std::span<uint8_t> UsbDeviceDescriptor::GetSerialStrDescriptor(usb::UsbSpeed) const
 {
-    asciiToUnicode((char *)USBD_CONFIGURATION_STRING_FS, USBD_StrDesc, length);
-    return USBD_StrDesc;
+    fillSerialNumber(&stringSerail[2], 8, &stringSerail[18], 4);
+    return std::span(stringSerail);
 }
 
-uint8_t *UsbDeviceDescriptor::GetInterfaceStrDescriptor(UsbSpeed speed, uint16_t *length)
+std::span<uint8_t> UsbDeviceDescriptor::GetConfigurationStrDescriptor(usb::UsbSpeed) const
 {
-    asciiToUnicode((char *)USBD_INTERFACE_STRING_FS, USBD_StrDesc, length);
-    return USBD_StrDesc;
+    return getDescriptor((char *)configurationString);
+}
+
+std::span<uint8_t> UsbDeviceDescriptor::GetInterfaceStrDescriptor(usb::UsbSpeed) const
+{
+    return getDescriptor((char *)interfaceString);
 }
 
 void UsbDeviceDescriptor::asciiToUnicode(char *ascii, uint8_t *unicode, uint16_t *len) const
@@ -104,12 +120,19 @@ void UsbDeviceDescriptor::asciiToUnicode(char *ascii, uint8_t *unicode, uint16_t
     uint8_t idx = 0;
     *len = strlen(ascii) * 2 + 2;
     unicode[idx++] = *(uint8_t *)(void *)len;
-    unicode[idx++] = USB_DESC_TYPE_STRING;
+    unicode[idx++] = usb::StringDescriptor;
 
     while (*ascii != '\0') {
         unicode[idx++] = *ascii++;
         unicode[idx++] = 0;
     }
+}
+
+std::span<uint8_t> UsbDeviceDescriptor::getDescriptor(char *stringData) const
+{
+    uint16_t length = 0;
+    asciiToUnicode(stringData, stringDescriptor, &length);
+    return std::span(stringDescriptor, length);
 }
 
 void UsbDeviceDescriptor::intToUnicode(uint32_t value, uint8_t *pbuf, uint8_t len) const
@@ -129,7 +152,8 @@ void UsbDeviceDescriptor::intToUnicode(uint32_t value, uint8_t *pbuf, uint8_t le
     }
 }
 
-void UsbDeviceDescriptor::fillSerialNumber(uint8_t *value1, uint8_t value1Len, uint8_t *value2, uint8_t value2Len) 
+void UsbDeviceDescriptor::fillSerialNumber(uint8_t *value1, uint8_t value1Len, uint8_t *value2,
+                                           uint8_t value2Len) const
 {
     const uint32_t DEVICE_ID1 = UID_BASE;
     const uint32_t DEVICE_ID2 = UID_BASE + 0x4;

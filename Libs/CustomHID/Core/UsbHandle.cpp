@@ -2,79 +2,85 @@
 
 #include <algorithm>
 
-#include "UsbCore.h"
+#include "UsbDescriptor.h"
+#include "UsbClass.h"
+#include "UsbDriver.h"
+#include "UsbSetupRequest.h"
 
-bool UsbHandle::init(UsbDescriptor *descriptor, uint8_t id_)
+namespace {
+const uint8_t USB_CONFIG_REMOTE_WAKEUP = 0x02;
+const uint8_t USB_CONFIG_SELF_POWERED = 0x01;
+} // namespace
+
+bool UsbHandle::init(const UsbDescriptor *descriptor, uint8_t id, UsbDriver *driver)
 {
-    if (mClassType) {
-        mClassType = nullptr;
-    }
-
-    if (descriptor) {
-        mDescriptor = descriptor;
-    }
-
+    mDriver = driver;
+    mDescriptor = descriptor;
     mState = DeviceDefault;
-    mId = id_;
+    mId = id;
 
-    return UsbCore::ref()->initInterface(this);
+    return mDriver->initInterface(this);
 }
 
 bool UsbHandle::deinit()
 {
     mState = DeviceDefault;
-    mClassType->DeInit(this, (uint8_t)mConfigIndex);
-    if (!UsbCore::ref()->stopInterface(this)) {
+    mClassType->deInit(this, (uint8_t)mConfigIndex);
+    if (!mDriver->stopInterface()) {
         return false;
     }
 
-    return UsbCore::ref()->deinitInterface(this);
+    return mDriver->deinitInterface();
 }
 
-void UsbHandle::setup(uint8_t *psetup)
+void UsbHandle::setup(const uint8_t *psetup)
 {
-    mRequest.parse(psetup);
+    UsbSetupRequest request;
+    request.parse(psetup);
 
     mEndpoint0State = EndpointSetup;
-    mEndpoint0Size = mRequest.getLength();
+    mEndpoint0Size = request.getLength();
 
-    switch (mRequest.getRecipient()) {
-    case USBD_SetupReqTypedef::RecipientDevice: onDeviceRequest(&mRequest); break;
-    case USBD_SetupReqTypedef::RecipientInterface: onInterfaceRequest(&mRequest); break;
-    case USBD_SetupReqTypedef::RecipientEndpoint: onEndpointRequest(&mRequest); break;
-    default: UsbCore::ref()->stallEndpoint(this, mRequest.getEndpointFromMask()); break;
+    switch (request.getRecipient()) {
+    case UsbSetupRequest::RecipientDevice: onDeviceRequest(request); break;
+    case UsbSetupRequest::RecipientInterface: onInterfaceRequest(request); break;
+    case UsbSetupRequest::RecipientEndpoint: onEndpointRequest(request); break;
+    default: mDriver->stallEndpoint(request.getEndpointFromMask()); break;
     }
 }
 
-bool UsbHandle::start() { return UsbCore::ref()->startInterface(this); }
+bool UsbHandle::start() { return mDriver->startInterface(); }
 
 bool UsbHandle::stop()
 {
-    mClassType->DeInit(this, (uint8_t)mConfigIndex);
-    return UsbCore::ref()->stopInterface(this);
+    mClassType->deInit(this, (uint8_t)mConfigIndex);
+    return mDriver->stopInterface();
 }
 
 bool UsbHandle::resetUsb()
 {
-    /* Open EP0 OUT */
-    openOutEndpoint0();
+    mSpeed = usb::FullSpeed;
 
-    /* Open EP0 IN */
-    openInEndpoint0();
+    if (!openEndpoint(usb::defualtEndpointOutAddress, usb::endpont0_Size, EndpointControl)) {
+        return false;
+    }
 
-    /* Upon Reset call user call back */
+    if (!openEndpoint(usb::defualtEndpointInAddress, usb::endpont0_Size, EndpointControl)) {
+        return false;
+    }
+
     mState = DeviceDefault;
     mEndpoint0State = EndpointIdle;
-    mConfigIndex = 0U;
-    mRemoteWakeup = 0U;
+    mConfigIndex = 0;
+    mRemoteWakeup = false;
 
-    return mClassData ? mClassType->DeInit(this, (uint8_t)mConfigIndex) : true;
+    return mClassType ? mClassType->deInit(this, mConfigIndex) : true;
 }
 
 bool UsbHandle::disconnect()
 {
     mState = DeviceDefault;
-    return mClassType->DeInit(this, (uint8_t)mConfigIndex);
+    return mClassType->deInit(this, mConfigIndex);
 }
 
 void UsbHandle::suspend()
@@ -99,16 +105,14 @@ void UsbHandle::sof()
 
 bool UsbHandle::isConfigured() const { return mState == DeviceConfigured; }
 
-void UsbHandle::setSpeed(UsbSpeed speed) { mSpeed = speed; }
-
 bool UsbHandle::setClassConfig(uint8_t cfgidx)
 {
-    return mClassType ? mClassType->Init(this, cfgidx) : false;
+    return mClassType ? mClassType->init(this, cfgidx) : false;
 }
 
 bool UsbHandle::clearClassConfig(uint8_t cfgidx)
 {
-    return mClassType ? mClassType->DeInit(this, cfgidx) : false;
+    return mClassType ? mClassType->deInit(this, cfgidx) : false;
 }
 
 bool UsbHandle::registerClass(UsbClass *pclass)
@@ -123,34 +127,36 @@ bool UsbHandle::registerClass(UsbClass *pclass)
 
 bool UsbHandle::dataOutStage(uint8_t epnum, uint8_t *pdata)
 {
-    if (epnum == 0U) {
-        UsbEndpoint *pep = &ep_out[0];
-
-        if (mEndpoint0State == EndpointDataOut) {
-            if (pep->rem_length > pep->maxpacket) {
-                pep->rem_length -= pep->maxpacket;
-
-                continueRx(pdata, std::min(pep->rem_length, pep->maxpacket));
-            } else {
-                if (mState == DeviceConfigured) {
-                    mClassType->EP0_RxReady(this);
-                }
-                sendStatus();
-            }
-        } else {
-            if (mEndpoint0State == EndpointStatusOut) {
-                /*
-         * STATUS PHASE completed, update ep0_state to idle
-         */
-                mEndpoint0State = EndpointIdle;
-                UsbCore::ref()->stallEndpoint(this, 0U);
-            }
+    if (epnum > 0) {
+        if (mState == DeviceConfigured) {
+            mClassType->dataOut(this, epnum);
+            return true;
         }
-    } else if (mState == DeviceConfigured) {
-        mClassType->DataOut(this, epnum);
-    } else {
-        /* should never be in this condition */
+
         return false;
+    }
+
+    if (mEndpoint0State == EndpointStatusOut) {
+        //STATUS PHASE completed, update ep0_state to idle
+        mEndpoint0State = EndpointIdle;
+        mDriver->stallEndpoint(usb::defualtEndpointOutAddress);
+        return true;
+    }
+
+    if (mEndpoint0State == EndpointDataOut) {
+        UsbEndpoint *endpoint = getEndpoint(usb::defualtEndpointOutAddress);
+        if (endpoint->currentLength > endpoint->maxPacketLength) {
+            endpoint->currentLength -= endpoint->maxPacketLength;
+
+            mDriver->prepareReceive(usb::defualtEndpointOutAddress, {pdata,
+                                    std::min(endpoint->currentLength, endpoint->maxPacketLength)});
+            return true;
+        }
+
+        if (mState == DeviceConfigured) {
+            mClassType->ep0_RxReady(this);
+        }
+        sendStatus();
     }
 
     return true;
@@ -158,561 +164,508 @@ bool UsbHandle::dataOutStage(uint8_t epnum, uint8_t *pdata)
 
 bool UsbHandle::dataInStage(uint8_t epnum, uint8_t *pdata)
 {
-    if (epnum == 0) {
-        UsbEndpoint *endpoint = &ep_in[0];
-
-        if (mEndpoint0State == EndpointDataIn) {
-            if (endpoint->rem_length > endpoint->maxpacket) {
-                endpoint->rem_length -= endpoint->maxpacket;
-
-                continueSendData(pdata, (uint16_t)endpoint->rem_length);
-
-                /* Prepare endpoint for premature end of transfer */
-                UsbCore::ref()->prepareReceive(this, 0U, nullptr, 0U);
-            } else {
-                /* last packet is MPS multiple, so send ZLP packet */
-                if ((endpoint->total_length % endpoint->maxpacket == 0U)
-                    && (endpoint->total_length >= endpoint->maxpacket)
-                    && (endpoint->total_length < mEndpoint0Size)) {
-                    continueSendData(nullptr, 0U);
-                    mEndpoint0Size = 0U;
-
-                    /* Prepare endpoint for premature end of transfer */
-                    UsbCore::ref()->prepareReceive(this, 0U, NULL, 0U);
-                } else {
-                    if (mState == DeviceConfigured) {
-                        mClassType->EP0_TxSent(this);
-                    }
-                    UsbCore::ref()->stallEndpoint(this, 0x80U);
-                    receiveStatus();
-                }
-            }
-        } else {
-            if ((mEndpoint0State == EndpointStatusIn) || (mEndpoint0State == EndpointIdle)) {
-                UsbCore::ref()->stallEndpoint(this, 0x80U);
-            }
+    if (epnum > 0) {
+        if (mState == DeviceConfigured) {
+            mClassType->dataIn(this, epnum);
+            return true;
         }
 
-        if (mTestMode == 1U) {
-            mTestMode = 0U;
+        return false;
+    }
+
+    if (mEndpoint0State != EndpointDataIn) {
+        if (mEndpoint0State == EndpointStatusIn || mEndpoint0State == EndpointIdle) {
+            mDriver->stallEndpoint(usb::defualtEndpointInAddress);
         }
+
+        return true;
+    }
+
+    UsbEndpoint *endpoint = getEndpoint(usb::defualtEndpointInAddress);
+
+    if (endpoint->currentLength > endpoint->maxPacketLength) {
+        endpoint->currentLength -= endpoint->maxPacketLength;
+
+        continueSendData({pdata, (uint16_t)endpoint->currentLength});
+
+        /* Prepare endpoint for premature end of transfer */
+        mDriver->prepareReceive(usb::defualtEndpointOutAddress, {});
+        return true;
+    }
+
+    /* last packet is MPS multiple, so send ZLP packet */
+    if ((endpoint->lengthToSend % endpoint->maxPacketLength == 0)
+        && (endpoint->lengthToSend >= endpoint->maxPacketLength)
+        && (endpoint->lengthToSend < mEndpoint0Size)) {
+        continueSendData({});
+        mEndpoint0Size = 0;
+
+        /* Prepare endpoint for premature end of transfer */
+        mDriver->prepareReceive(usb::defualtEndpointOutAddress, {});
         return true;
     }
 
     if (mState == DeviceConfigured) {
-        mClassType->DataIn(this, epnum);
-        return true;
+        mClassType->ep0_TxSent(this);
     }
+    mDriver->stallEndpoint(usb::defualtEndpointInAddress);
+    receiveStatus();
 
-    return false;
+    return true;
 }
 
 bool UsbHandle::isoInIncomplete(uint8_t epnum) { return true; }
 
 bool UsbHandle::isoOUTIncomplete(uint8_t epnum) { return true; }
 
-uint32_t UsbHandle::getRxCount(uint8_t ep_addr)
-{
-    return UsbCore::ref()->getRxDataSize(this, ep_addr);
-}
+uint32_t UsbHandle::getRxCount(uint8_t ep_addr) { return mDriver->getRxDataSize(ep_addr); }
 
-bool UsbHandle::sendData(uint8_t *pbuf, uint16_t len)
+bool UsbHandle::sendData(std::span<uint8_t> data)
 {
-    /* Set EP0 State */
     mEndpoint0State = EndpointDataIn;
-    ep_in[0].setLength(len);
+    UsbEndpoint *ep = getEndpoint(usb::defualtEndpointInAddress);
+    ep->setLength(data.size());
 
-    return UsbCore::ref()->transmit(this, 0x00U, pbuf, len);
+    return mDriver->transmit(usb::defualtEndpointInAddress, data);
 }
 
-bool UsbHandle::continueSendData(uint8_t *pbuf, uint16_t len)
+bool UsbHandle::sendData(uint8_t data) { return sendData({&data, sizeof(data)}); }
+
+bool UsbHandle::continueSendData(std::span<uint8_t> data)
 {
-    /* Start the next transfer */
-    return UsbCore::ref()->transmit(this, 0x00U, pbuf, len);
+    return mDriver->transmit(usb::defualtEndpointInAddress, data);
 }
 
-bool UsbHandle::prepareRx(uint8_t *pbuf, uint16_t len)
+bool UsbHandle::receiveData(std::span<uint8_t> buffer)
 {
-    /* Set EP0 State */
     mEndpoint0State = EndpointDataOut;
-    ep_out[0].setLength(len);
+    UsbEndpoint *ep = getEndpoint(usb::defualtEndpointOutAddress);
+    ep->setLength(buffer.size());
 
-    return UsbCore::ref()->prepareReceive(this, 0U, pbuf, len);
+    return mDriver->prepareReceive(usb::defualtEndpointOutAddress, buffer);
 }
 
-bool UsbHandle::continueRx(uint8_t *pbuf, uint16_t len)
+bool UsbHandle::continueReceiveData(std::span<uint8_t> buffer)
 {
-    return UsbCore::ref()->prepareReceive(this, 0U, pbuf, len);
+    return mDriver->prepareReceive(usb::defualtEndpointOutAddress, buffer);
 }
 
 bool UsbHandle::sendStatus()
 {
-    /* Set EP0 State */
     mEndpoint0State = EndpointStatusIn;
-    return UsbCore::ref()->transmit(this, 0x00U, NULL, 0U);
+    return mDriver->transmit(usb::defualtEndpointInAddress, {});
 }
+
+void UsbHandle::setSelfPowered(bool state) { mSelfPowered = state; }
 
 bool UsbHandle::receiveStatus()
 {
-    /* Set EP0 State */
     mEndpoint0State = EndpointStatusOut;
-
-    /* Start the transfer */
-    return UsbCore::ref()->prepareReceive(this, 0U, NULL, 0U);
+    return mDriver->prepareReceive(usb::defualtEndpointOutAddress, {});
 }
 
-bool UsbHandle::onDeviceRequest(USBD_SetupReqTypedef *req)
+bool UsbHandle::onDeviceRequest(const UsbSetupRequest &req)
 {
-    USBD_StatusTypeDef ret = USBD_OK;
+    bool ok = false;
 
-    switch (req->getRequestType()) {
-    case USBD_SetupReqTypedef::RequestClass:
-    case USBD_SetupReqTypedef::RequestVendor: mClassType->Setup(this, req); break;
-    case USBD_SetupReqTypedef::RequestStandart:
-        switch (req->getRequest()) {
-        case USBD_SetupReqTypedef::RequestGetDescriptor: getDescriptor(req); break;
-        case USBD_SetupReqTypedef::RequestSetAddress: setAddress(req); break;
-        case USBD_SetupReqTypedef::RequestSetConfiguration: setConfig(req); break;
-        case USBD_SetupReqTypedef::RequestGetConfiguration: getConfig(req); break;
-        case USBD_SetupReqTypedef::RequestGetStatus: getStatus(req); break;
-        case USBD_SetupReqTypedef::RequestSetFeature: setFeature(req); break;
-        case USBD_SetupReqTypedef::RequestClearFeature: clearFeature(req); break;
-
-        default: stallEndpoints(); break;
+    switch (req.getRequestType()) {
+    case UsbSetupRequest::RequestClass:
+    case UsbSetupRequest::RequestVendor: ok = mClassType->setup(this, req); break;
+    case UsbSetupRequest::RequestStandart:
+        switch (req.getRequest()) {
+        case UsbSetupRequest::RequestGetDescriptor: ok = sendDescriptor(req); break;
+        case UsbSetupRequest::RequestSetAddress: ok = setAddress(req); break;
+        case UsbSetupRequest::RequestSetConfiguration: ok = setConfig(req); break;
+        case UsbSetupRequest::RequestGetConfiguration: ok = sendConfig(req); break;
+        case UsbSetupRequest::RequestGetStatus: ok = sendStatus(req); break;
+        case UsbSetupRequest::RequestSetFeature: ok = setFeature(req); break;
+        case UsbSetupRequest::RequestClearFeature: ok = clearFeature(req); break;
+        default: break;
         }
         break;
-
-    default: stallEndpoints(); break;
+    default: break;
     }
 
-    return ret;
+    if (ok) {
+        return true;
+    }
+
+    stallEndpoints();
+    return false;
 }
 
-bool UsbHandle::onInterfaceRequest(USBD_SetupReqTypedef *req)
+bool UsbHandle::onInterfaceRequest(const UsbSetupRequest &req)
 {
-    switch (req->getRequestType()) {
-    case USBD_SetupReqTypedef::RequestClass:
-    case USBD_SetupReqTypedef::RequestVendor:
-    case USBD_SetupReqTypedef::RequestStandart:
+    switch (req.getRequestType()) {
+    case UsbSetupRequest::RequestClass:
+    case UsbSetupRequest::RequestVendor:
+    case UsbSetupRequest::RequestStandart:
         switch (mState) {
         case DeviceDefault:
         case DeviceAddressed:
         case DeviceConfigured:
-
-            if (req->getInterfaceIndex() <= USBD_MAX_NUM_INTERFACES) {
-                bool ok = (USBD_StatusTypeDef)mClassType->Setup(this, req);
-
-                if (req->getLength() == 0U && ok) {
-                    sendStatus();
-                }
-            } else {
-                stallEndpoints();
-            }
-            break;
-
-        default: stallEndpoints(); break;
-        }
-        break;
-
-    default: stallEndpoints(); break;
-    }
-
-    return true;
-}
-
-bool UsbHandle::onEndpointRequest(USBD_SetupReqTypedef *req)
-{
-    switch (req->getRequestType()) {
-    case USBD_SetupReqTypedef::RequestClass:
-    case USBD_SetupReqTypedef::RequestVendor: mClassType->Setup(this, req); break;
-    case USBD_SetupReqTypedef::RequestStandart: {
-        uint8_t ep_addr = req->getEndpointAddress();
-
-        switch (req->getRequest()) {
-        case USBD_SetupReqTypedef::RequestSetFeature:
-            switch (mState) {
-            case DeviceAddressed:
-                if ((ep_addr != 0x00U) && (ep_addr != 0x80U)) {
-                    UsbCore::ref()->stallEndpoint(this, ep_addr);
-                    UsbCore::ref()->stallEndpoint(this, 0x80U);
-                } else {
-                    stallEndpoints();
-                }
+            if (req.getInterfaceIndex() > usb::maxInterfaceNumber) {
                 break;
+            }
 
-            case DeviceConfigured:
-                if (req->getFeatureRequest() == USB_FEATURE_EP_HALT) {
-                    if ((ep_addr != 0x00U) && (ep_addr != 0x80U) && (req->getLength() == 0x00U)) {
-                        UsbCore::ref()->stallEndpoint(this, ep_addr);
-                    }
-                }
+            if (!mClassType->setup(this, req)) {
+                break;
+            }
+
+            if (req.getLength() == 0) {
                 sendStatus();
-
-                break;
-
-            default: stallEndpoints(); break;
             }
-            break;
-
-        case USBD_SetupReqTypedef::RequestClearFeature:
-
-            switch (mState) {
-            case DeviceAddressed:
-                if ((ep_addr != 0x00U) && (ep_addr != 0x80U)) {
-                    UsbCore::ref()->stallEndpoint(this, ep_addr);
-                    UsbCore::ref()->stallEndpoint(this, 0x80U);
-                } else {
-                    stallEndpoints();
-                }
-                break;
-
-            case DeviceConfigured:
-                if (req->getFeatureRequest() == USB_FEATURE_EP_HALT) {
-                    if ((ep_addr & 0x7FU) != 0x00U) {
-                        UsbCore::ref()->clearStallEndpoint(this, ep_addr);
-                    }
-                    sendStatus();
-                }
-                break;
-
-            default: stallEndpoints(); break;
-            }
-            break;
-
-        case USBD_SetupReqTypedef::RequestGetStatus:
-            switch (mState) {
-            case DeviceAddressed:
-                if ((ep_addr != 0x00U) && (ep_addr != 0x80U)) {
-                    stallEndpoints();
-                    break;
-                }
-                {
-                    UsbEndpoint *ep = isEndpointIn(ep_addr) ? &ep_in[ep_addr & 0x7FU]
-                                                            : &ep_out[ep_addr & 0x7FU];
-                    ep->status = 0x0000U;
-                    sendData((uint8_t *)(void *)&ep->status, 2U);
-                }
-                break;
-            case DeviceConfigured:
-                if (isEndpointIn(ep_addr)) {
-                    if (!ep_in[ep_addr & 0xFU].is_used) {
-                        stallEndpoints();
-                        break;
-                    }
-                } else {
-                    if (!ep_out[ep_addr & 0xFU].is_used) {
-                        stallEndpoints();
-                        break;
-                    }
-                }
-
-                {
-                    UsbEndpoint *ep = isEndpointIn(ep_addr) ? &ep_in[ep_addr & 0x7FU]
-                                                            : &ep_out[ep_addr & 0x7FU];
-
-                    if ((ep_addr == 0x00U) || (ep_addr == 0x80U)) {
-                        ep->status = 0x0000U;
-                    } else if (UsbCore::ref()->isEndpointStall(this, ep_addr)) {
-                        ep->status = 0x0001U;
-                    } else {
-                        ep->status = 0x0000U;
-                    }
-
-                    sendData((uint8_t *)(void *)&ep->status, 2U);
-                }
-                break;
-
-            default: stallEndpoints(); break;
-            }
-            break;
-
-        default: stallEndpoints(); break;
+            return true;
+        default: break;
         }
         break;
+
+    default: break;
     }
 
-    default: stallEndpoints(); break;
-    }
-
-    return USBD_OK;
+    stallEndpoints();
+    return false;
 }
 
-void UsbHandle::setConfig(USBD_SetupReqTypedef *req)
+bool UsbHandle::onEndpointRequest(const UsbSetupRequest &req)
 {
-    const uint8_t configIndex = req->getConfigIndex();
-    if (configIndex > USBD_MAX_NUM_CONFIGURATION) {
-        stallEndpoints();
-        return;
+    switch (req.getRequestType()) {
+    case UsbSetupRequest::RequestClass:
+    case UsbSetupRequest::RequestVendor:
+        if (mClassType->setup(this, req)) {
+            return true;
+        }
+        break;
+    case UsbSetupRequest::RequestStandart:
+        if (onStandartRequest(req)) {
+            return true;
+        }
+        break;
+    default: break;
+    }
+
+    stallEndpoints();
+    return false;
+}
+
+bool UsbHandle::onStandartRequest(const UsbSetupRequest &req)
+{
+    switch (req.getRequest()) {
+    case UsbSetupRequest::RequestSetFeature: return onSetFeature(req);
+    case UsbSetupRequest::RequestClearFeature: return onClearFeature(req);
+    case UsbSetupRequest::RequestGetStatus: return onGetEndpointStatus(req);
+    default: break;
+    }
+
+    return false;
+}
+
+bool UsbHandle::onSetFeature(const UsbSetupRequest &req)
+{
+    const uint8_t endpointAddress = req.getEndpointAddress();
+    const bool isUserEndpoint = endpointAddress != usb::defualtEndpointOutAddress
+                                && endpointAddress != usb::defualtEndpointInAddress;
+
+    switch (mState) {
+    case DeviceAddressed:
+        if (!isUserEndpoint) {
+            break;
+        }
+        mDriver->stallEndpoint(endpointAddress);
+        mDriver->stallEndpoint(usb::defualtEndpointInAddress);
+        return true;
+
+    case DeviceConfigured:
+        if (req.getFeatureRequest() == UsbSetupRequest::FeatureHaltEndpoint) {
+            if (isUserEndpoint && req.getLength() == 0) {
+                mDriver->stallEndpoint(endpointAddress);
+            }
+        }
+        sendStatus();
+        return true;
+    default: break;
+    }
+
+    return false;
+}
+
+bool UsbHandle::onClearFeature(const UsbSetupRequest &req)
+{
+    const uint8_t endpointAddress = req.getEndpointAddress();
+    const bool isUserEndpoint = endpointAddress != usb::defualtEndpointOutAddress
+                                && endpointAddress != usb::defualtEndpointInAddress;
+
+    switch (mState) {
+    case DeviceAddressed:
+        if (!isUserEndpoint) {
+            break;
+        }
+        mDriver->stallEndpoint(endpointAddress);
+        mDriver->stallEndpoint(usb::defualtEndpointInAddress);
+        return true;
+    case DeviceConfigured:
+        if (req.getFeatureRequest() == UsbSetupRequest::FeatureHaltEndpoint) {
+            if (isUserEndpoint) {
+                mDriver->clearStallEndpoint(endpointAddress);
+            }
+            sendStatus();
+        }
+        return true;
+    default: break;
+    }
+
+    return false;
+}
+
+bool UsbHandle::onGetEndpointStatus(const UsbSetupRequest &req)
+{
+    const uint8_t endpointAddress = req.getEndpointAddress();
+    const bool isUserEndpoint = endpointAddress != usb::defualtEndpointOutAddress
+                                && endpointAddress != usb::defualtEndpointInAddress;
+
+    UsbEndpoint *ep = getEndpoint(endpointAddress);
+
+    switch (mState) {
+    case DeviceAddressed:
+        if (isUserEndpoint) {
+            break;
+        }
+        ep->status = 0;
+        sendData({(uint8_t *)(void *)&ep->status, 2});
+        return true;
+    case DeviceConfigured:
+        if (ep->isUsed) {
+            break;
+        }
+
+        if (!isUserEndpoint) {
+            ep->status = 0;
+        } else {
+            ep->status = mDriver->isEndpointStall(endpointAddress) ? 1 : 0;
+        }
+
+        sendData({(uint8_t *)(void *)&ep->status, 2});
+        return true;
+
+    default: break;
+    }
+
+    return false;
+}
+
+bool UsbHandle::setConfig(const UsbSetupRequest &req)
+{
+    const uint8_t configIndex = req.getConfigIndex();
+    if (configIndex > usb::maxConfigurationNumber) {
+        return false;
     }
 
     switch (mState) {
     case DeviceAddressed:
         if (configIndex == 0) {
             sendStatus();
-            break;
+            return true;
         }
 
         mConfigIndex = configIndex;
         mState = DeviceConfigured;
         if (!setClassConfig(configIndex)) {
-            stallEndpoints();
-            return;
+            break;
         }
 
         sendStatus();
-        break;
+        return true;
     case DeviceConfigured:
         if (configIndex == 0) {
             mState = DeviceAddressed;
             mConfigIndex = configIndex;
             clearClassConfig(configIndex);
             sendStatus();
-            break;
+            return true;
         }
-        
+
         if (configIndex != mConfigIndex) {
-            /* Clear old configuration */
             clearClassConfig((uint8_t)mConfigIndex);
 
-            /* set new configuration */
             mConfigIndex = configIndex;
             if (!setClassConfig(configIndex)) {
-                stallEndpoints();
-                return;
+                break;
             }
-            sendStatus();
-            break;
         }
+
         sendStatus();
-        break;
-    default:
-        stallEndpoints();
-        clearClassConfig(configIndex);
-        break;
+        return true;
+    default: clearClassConfig(configIndex); break;
     }
+
+    return false;
 }
 
-void UsbHandle::getConfig(USBD_SetupReqTypedef *req)
+bool UsbHandle::sendConfig(const UsbSetupRequest &req)
 {
-    if (req->getLength() != 1U) {
-        stallEndpoints();
-        return;
+    if (req.getLength() != 1) {
+        return false;
     }
 
     switch (mState) {
     case DeviceDefault:
     case DeviceAddressed:
-        mConfigDefault = 0U;
-        sendData((uint8_t *)(void *)&mConfigDefault, 1U);
-        break;
-    case DeviceConfigured: sendData((uint8_t *)(void *)&mConfigIndex, 1U); break;
-    default: stallEndpoints(); break;
+        mConfigDefault = 0;
+        return sendData(uint8_t(mConfigDefault));
+    case DeviceConfigured: return sendData(uint8_t(mConfigIndex));
+    default: break;
     }
+
+    return false;
 }
 
-void UsbHandle::getDescriptor(USBD_SetupReqTypedef *req)
+bool UsbHandle::sendDescriptor(const UsbSetupRequest &req)
 {
-    uint16_t len = 0U;
-    uint8_t *pbuf = nullptr;
-    uint8_t err = 0U;
+    std::span<uint8_t> buffer;
 
-    switch (req->getDescriptorType()) {
-#if (USBD_LPM_ENABLED == 1U)
-    case USB_DESC_TYPE_BOS:
-        if (pDesc->GetBOSDescriptor != NULL) {
-            pbuf = pDesc->GetBOSDescriptor(dev_speed, &len);
-        } else {
-            stallEndpoints();
-            err++;
+    switch (req.getDescriptorType()) {
+    case usb::DeviceDescriptor: buffer = mDescriptor->GetDeviceDescriptor(mSpeed); break;
+    case usb::ConfigurationDescriptor: buffer = mClassType->getConfigDescriptor(mSpeed); break;
+    case usb::StringDescriptor:
+        buffer = mDescriptor->getStringDescriptor(mSpeed, req.getStringIndex());
+        break;
+    case usb::QualfierDescriptor:
+        if (mSpeed != usb::HighSpeed) {
+            break;
         }
+        buffer = mClassType->getDeviceQualifierDescriptor();
         break;
-#endif
-    case USB_DESC_TYPE_DEVICE: pbuf = mDescriptor->GetDeviceDescriptor(mSpeed, &len); break;
-
-    case USB_DESC_TYPE_CONFIGURATION:
-        if (mSpeed == USBD_SPEED_HIGH) {
-            pbuf = mClassType->GetHSConfigDescriptor(&len);
-            pbuf[1] = USB_DESC_TYPE_CONFIGURATION;
-        } else {
-            pbuf = mClassType->GetFSConfigDescriptor(&len);
-            pbuf[1] = USB_DESC_TYPE_CONFIGURATION;
+    case usb::ConfigurationOtherSpeedDescriptor:
+        if (mSpeed != usb::HighSpeed) {
+            break;
         }
+        buffer = mClassType->getOtherSpeedConfigDescriptor();
         break;
-
-    case USB_DESC_TYPE_STRING:
-        switch (req->getStringIndex()) {
-        case USBD_IDX_LANGID_STR:
-            pbuf = mDescriptor->GetLangIDStrDescriptor(mSpeed, &len);
-            break;
-
-        case USBD_IDX_MFC_STR:
-            pbuf = mDescriptor->GetManufacturerStrDescriptor(mSpeed, &len);
-            break;
-
-        case USBD_IDX_PRODUCT_STR:
-            pbuf = mDescriptor->GetProductStrDescriptor(mSpeed, &len);
-            break;
-
-        case USBD_IDX_SERIAL_STR:
-            pbuf = mDescriptor->GetSerialStrDescriptor(mSpeed, &len);
-            break;
-
-        case USBD_IDX_CONFIG_STR:
-            pbuf = mDescriptor->GetConfigurationStrDescriptor(mSpeed, &len);
-            break;
-
-        case USBD_IDX_INTERFACE_STR:
-            pbuf = mDescriptor->GetInterfaceStrDescriptor(mSpeed, &len);
-            break;
-
-        default:
-#if (USBD_SUPPORT_USER_STRING_DESC == 1U)
-            if (pClass->GetUsrStrDescriptor != NULL) {
-                pbuf = pClass->GetUsrStrDescriptor(this, (req->wValue), &len);
-            } else {
-                stallEndpoints();
-                err++;
-            }
-            break;
-#else
-            stallEndpoints();
-            err++;
-#endif
-        }
-        break;
-
-    case USB_DESC_TYPE_DEVICE_QUALIFIER:
-        if (mSpeed == USBD_SPEED_HIGH) {
-            pbuf = mClassType->GetDeviceQualifierDescriptor(&len);
-        } else {
-            stallEndpoints();
-            err++;
-        }
-        break;
-
-    case USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION:
-        if (mSpeed == USBD_SPEED_HIGH) {
-            pbuf = mClassType->GetOtherSpeedConfigDescriptor(&len);
-            pbuf[1] = USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION;
-        } else {
-            stallEndpoints();
-            err++;
-        }
-        break;
-
-    default:
-        stallEndpoints();
-        err++;
-        break;
+    default: break;
     }
 
-    if (err != 0U) {
-        return;
-    } else {
-        if ((len != 0) && (req->getLength() != 0)) {
-            len = std::min(len, req->getLength());
-            sendData(pbuf, len);
-        }
-
-        if (req->getLength() == 0U) {
-            (void)sendStatus();
-        }
+    if (!buffer.data()) {
+        return false;
     }
+
+    if (req.getLength() == 0) {
+        sendStatus();
+        return true;
+    }
+
+    uint16_t len = std::min<uint16_t>(buffer.size(), req.getLength());
+    return sendData({buffer.data(), len});
 }
 
-void UsbHandle::setAddress(USBD_SetupReqTypedef *req)
+bool UsbHandle::setAddress(const UsbSetupRequest &req)
 {
     if (mState == DeviceConfigured) {
-        stallEndpoints();
-        return;
+        return false;
     }
 
-    auto deviceAddrOpt = req->getDeviceAddress();
+    auto deviceAddrOpt = req.getDeviceAddress();
     if (!deviceAddrOpt) {
-        stallEndpoints();
-        return;
+        return false;
     }
 
     mAddress = *deviceAddrOpt;
-    UsbCore::ref()->setUsbAddress(this, mAddress);
-    sendStatus();
+    mDriver->setUsbAddress(mAddress);
+    if (!sendStatus()) {
+        return false;
+    }
 
     mState = mAddress != 0 ? DeviceAddressed : DeviceDefault;
+    return true;
 }
 
-void UsbHandle::getStatus(USBD_SetupReqTypedef *req)
+bool UsbHandle::sendStatus(const UsbSetupRequest &req)
 {
     switch (mState) {
     case DeviceDefault:
     case DeviceAddressed:
     case DeviceConfigured:
-        if (req->getLength() != 0x2U) {
-            stallEndpoints();
+        if (req.getLength() != 2) {
             break;
         }
 
-#if (USBD_SELF_POWERED == 1U)
-        mConfigStatus = USB_CONFIG_SELF_POWERED;
-#else
-        dev_config_status = 0U;
-#endif
+        if (mSelfPowered) {
+            mConfigStatus = USB_CONFIG_SELF_POWERED;
+        }
 
         if (mRemoteWakeup) {
             mConfigStatus |= USB_CONFIG_REMOTE_WAKEUP;
         }
 
-        sendData((uint8_t *)(void *)&mConfigStatus, 2U);
-        break;
-
-    default: stallEndpoints(); break;
+        return sendData({(uint8_t *)(void *)&mConfigStatus, 2});
+    default: break;
     }
+
+    return false;
 }
 
-void UsbHandle::setFeature(USBD_SetupReqTypedef *req)
+bool UsbHandle::setFeature(const UsbSetupRequest &req)
 {
-    if (req->getFeatureRequest() == USB_FEATURE_REMOTE_WAKEUP) {
-        mRemoteWakeup = 1U;
+    if (req.getFeatureRequest() == UsbSetupRequest::FeatureRemoteWakeUp) {
+        mRemoteWakeup = true;
         sendStatus();
     }
+
+    return true;
 }
 
-void UsbHandle::clearFeature(USBD_SetupReqTypedef *req)
+bool UsbHandle::clearFeature(const UsbSetupRequest &req)
 {
     switch (mState) {
     case DeviceDefault:
     case DeviceAddressed:
     case DeviceConfigured:
-        if (req->getFeatureRequest() == USB_FEATURE_REMOTE_WAKEUP) {
-            mRemoteWakeup = 0U;
+        if (req.getFeatureRequest() == UsbSetupRequest::FeatureRemoteWakeUp) {
+            mRemoteWakeup = false;
             sendStatus();
         }
-        break;
-
-    default: stallEndpoints(); break;
+        return true;
+    default: break;
     }
+
+    return false;
 }
 
-bool UsbHandle::isEndpointIn(uint8_t epAddress) const
+UsbEndpoint *UsbHandle::getEndpoint(uint8_t epAddress)
 {
-    return epAddress & 0x80U == 0x80U;
+    const bool isInEndpoint = epAddress
+                              & usb::defualtEndpointInAddress == usb::defualtEndpointInAddress;
+    return isInEndpoint ? &mInEndpoints[epAddress & 0x0F] : &mOutEndpoints[epAddress & 0x0F];
 }
 
 void UsbHandle::stallEndpoints()
 {
-    UsbCore::ref()->stallEndpoint(this, 0x80U);
-    UsbCore::ref()->stallEndpoint(this, 0U);
+    mDriver->stallEndpoint(usb::defualtEndpointInAddress);
+    mDriver->stallEndpoint(usb::defualtEndpointOutAddress);
 }
 
-void UsbHandle::openOutEndpoint0()
+UsbDriver *UsbHandle::getDriver() { return mDriver; }
+
+bool UsbHandle::openEndpoint(uint8_t address, uint16_t size, EndpointType type)
 {
-    UsbCore::ref()->openEndpoint(this, 0x00U, EndpointControl, USB_MAX_EP0_SIZE);
-    ep_out[0x00U & 0xFU].is_used = true;
-    ep_out[0].maxpacket = USB_MAX_EP0_SIZE;
+    if (!mDriver->openEndpoint(address, type, size)) {
+        return false;
+    }
+
+    UsbEndpoint *ep = getEndpoint(address);
+    ep->isUsed = true;
+    ep->maxPacketLength = size;
+
+    return true;
 }
 
-void UsbHandle::openInEndpoint0()
+bool UsbHandle::closeEndpoint(uint8_t address)
 {
-    UsbCore::ref()->openEndpoint(this, 0x80U, EndpointControl, USB_MAX_EP0_SIZE);
-    ep_in[0x80U & 0xFU].is_used = true;
-    ep_in[0].maxpacket = USB_MAX_EP0_SIZE;
+    if (!mDriver->closeEndpoint(address)) {
+        return false;
+    }
+
+    UsbEndpoint *ep = getEndpoint(address);
+    ep->isUsed = false;
+
+    return true;
 }

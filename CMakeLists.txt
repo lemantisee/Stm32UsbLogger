@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 3.20)
 
 project("USB_logger" C CXX ASM)
+
+set(CMAKE_CXX_STANDARD 20)
  
 add_executable(${PROJECT_NAME})
 
 target_sources(
     ${PROJECT_NAME} PRIVATE
     src/main.cpp
-    src/Usb/UsbCoreF103.h src/Usb/UsbCoreF103.cpp
+    src/Logger.h
+    src/Usb/CustomHid.h src/Usb/CustomHid.cpp
+    src/Usb/UsbDriverF103.h src/Usb/UsbDriverF103.cpp
     src/Usb/UsbDeviceDescriptor.h src/Usb/UsbDeviceDescriptor.cpp
     src/Usb/UsbDevice.h src/Usb/UsbDevice.cpp
-    src/Usb/UsbPcdCallbacks.cpp
-    src/Usb/usbd_custom_hid_if.h src/Usb/usbd_custom_hid_if.cpp
 
     Core/stm32f1xx_hal_msp.c
     Core/stm32f1xx_it.cpp
@@ -48,6 +50,7 @@ target_compile_options( ${PROJECT_NAME} PRIVATE
     "$<$<CONFIG:Debug>:-g3>"
     "$<$<NOT:$<CONFIG:Debug>>:-g0>"
     "$<$<NOT:$<CONFIG:Debug>>:-Os>"
+    -Wno-volatile #ignore -Wvolatile warning in c++20
 )
 
 add_custom_command(

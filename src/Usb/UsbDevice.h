@@ -1,21 +1,21 @@
 #pragma once
 
-#include "UsbCoreF103.h"
+#include "UsbDriverF103.h"
 #include "UsbDeviceDescriptor.h"
-#include "UsbCustomHid.h"
+#include "CustomHid.h"
+#include "Logger.h"
 
-class UsbDevice
+class UsbDevice : public Printer
 {
 public:
-    UsbDevice();
-    ~UsbDevice() = default;
-
     bool init();
     bool sendData(const char *data);
 
+    void print(const char *str) override;
+
 private:
-    UsbCoreF103 mCore;
+    UsbDriverF103 mDriver;
     UsbHandle mHandle;
     UsbDeviceDescriptor mDescriptor;
-    UsbCustomHid mCustomHid;
+    CustomHid mCustomHid;
 };
