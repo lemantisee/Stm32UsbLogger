@@ -3,7 +3,7 @@
 #include "UsbClass.h"
 
 const uint8_t customHidReportDescriptoSize = 33;
-const uint8_t customHidOutReportBufferSize = 2;
+const uint8_t customHidOutReportBufferSize = 64;
 
 class UsbCustomHid : public UsbClass
 {

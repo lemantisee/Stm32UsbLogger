@@ -2,6 +2,7 @@
 
 #include "UsbDevice.h"
 #include "Logger.h"
+#include "StringBuffer.h"
 
 namespace {
 bool SystemClock_Config(void)
@@ -66,11 +67,16 @@ int main(void)
 
     int i = 0;
 
+    StringBuffer<128> inBuffer;
+
     while (1) {
-        LOG("Hello world %i", i);
-        LOG("Hello world 234 %i", i);
-        ++i;
-        HAL_Delay(1000);
+        if (usb.popData({inBuffer.data(), inBuffer.size()})) {
+            usb.sendData("Received");
+        }
+        // LOG("Hello world %i", i);
+        // LOG("Hello world 234 %i", i);
+        // ++i;
+        // HAL_Delay(1000);
     }
 }
 

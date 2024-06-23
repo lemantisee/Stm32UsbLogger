@@ -10,6 +10,9 @@ target_sources(
     ${PROJECT_NAME} PRIVATE
     src/main.cpp
     src/Logger.h
+
+    src/Misc/StringBuffer.h
+
     src/Usb/CustomHid.h src/Usb/CustomHid.cpp
     src/Usb/UsbDriverF103.h src/Usb/UsbDriverF103.cpp
     src/Usb/UsbDeviceDescriptor.h src/Usb/UsbDeviceDescriptor.cpp
@@ -27,6 +30,7 @@ add_subdirectory(Libs)
 
 target_include_directories( ${PROJECT_NAME} PRIVATE
     ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/Misc
     ${PROJECT_SOURCE_DIR}/src/Usb
     ${PROJECT_SOURCE_DIR}/Core
 )

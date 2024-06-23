@@ -10,6 +10,7 @@ class UsbDevice : public Printer
 public:
     bool init();
     bool sendData(const char *data);
+    bool popData(std::span<char> buffer);
 
     void print(const char *str) override;
 

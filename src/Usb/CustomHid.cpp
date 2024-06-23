@@ -17,13 +17,32 @@ namespace {
 		0x95, 0x40, // REPORT_COUNT (64)
 		0x09, 0x01, // USAGE (Undefined)
 		0x91, 0x02, // OUTPUT (Data,Var,Abs)
-		0x95, 0x01, // REPORT_COUNT (1)
+		0x95, 0x40, // REPORT_COUNT (64)
 		0x09, 0x01, // USAGE (Undefined)
 		0xb1, 0x02, // FEATURE (Data,Var,Abs) 
 		0xC0 /* END_COLLECTION */
 };
 }
 
-void CustomHid::onReceive(uint8_t *state, uint32_t size) {}
+bool CustomHid::popReport(std::span<char> buffer)
+{
+    if (mBuffer.capacity() == 0) {
+        return false;
+    }
+
+    const uint32_t dataSize = std::min<uint32_t>(mBuffer.capacity(), buffer.size());
+
+    std::memcpy(buffer.data(), mBuffer.data(), dataSize);
+    mBuffer.clear();
+    return true;
+}
+
+void CustomHid::onReceive(uint8_t *state, uint32_t size)
+{
+	if (mBuffer.size() >= size) {
+		mBuffer.clear();
+		mBuffer.append(state, size);
+	}
+}
 
 uint8_t *CustomHid::getReportDescriptor() const { return reportDescriptor; }
