@@ -252,7 +252,7 @@ bool UsbCustomHid::ep0_TxSent(UsbHandle *pdev) { return false; }
 bool UsbCustomHid::ep0_RxReady(UsbHandle *pdev)
 {
     if (mIsReportAvailable) {
-        onReceive(mReportBuffer);
+        onReceive(mReportBuffer, customHidOutReportBufferSize);
         mIsReportAvailable = false;
     }
 
@@ -269,7 +269,7 @@ bool UsbCustomHid::dataIn(UsbHandle *pdev, uint8_t epnum)
 
 bool UsbCustomHid::dataOut(UsbHandle *pdev, uint8_t epnum)
 {
-    onReceive(mReportBuffer);
+    onReceive(mReportBuffer, customHidOutReportBufferSize);
     pdev->getDriver()->prepareReceive(UsbCustomHid::endpointOutAddress, {mReportBuffer,
                                       customHidOutReportBufferSize});
 

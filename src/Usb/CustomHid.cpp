@@ -24,6 +24,6 @@ namespace {
 };
 }
 
-void CustomHid::onReceive(uint8_t *state) {}
+void CustomHid::onReceive(uint8_t *state, uint32_t size) {}
 
 uint8_t *CustomHid::getReportDescriptor() const { return reportDescriptor; }

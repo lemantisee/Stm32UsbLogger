@@ -34,7 +34,7 @@ public:
 protected:
     virtual bool onInit() { return true; };
     virtual bool onDeinit() { return true; };
-    virtual void onReceive(uint8_t *state) {};
+    virtual void onReceive(uint8_t *state, uint32_t size) {};
     virtual uint8_t *getReportDescriptor() const = 0;
 
 private:
