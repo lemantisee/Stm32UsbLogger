@@ -8,6 +8,14 @@ template <uint32_t N>
 class StringBuffer
 {
 public:
+    StringBuffer() = default;
+    StringBuffer(const char *data, uint32_t size)
+    {
+        size_t sizeToCopy = std::min<size_t>(mBuffer.size(), size);
+        std::memcpy(mBuffer.data(), data, sizeToCopy);
+        mCurrentByte = sizeToCopy - 1;
+    }
+
     char &operator[](uint32_t index) {
         return mBuffer[index];
     }
@@ -78,6 +86,10 @@ public:
 
     uint32_t capacity() const {
         return mCurrentByte;
+    }
+
+    bool empty() const {
+        return mCurrentByte == 0;
     }
 
     bool contains(const char *substr) const {

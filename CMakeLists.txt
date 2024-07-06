@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
-project("USB_logger" C CXX ASM)
+project(USB_logger C CXX ASM)
 
 set(CMAKE_CXX_STANDARD 20)
  
 add_executable(${PROJECT_NAME})
 
-target_sources(
-    ${PROJECT_NAME} PRIVATE
+target_sources(${PROJECT_NAME} PRIVATE
     src/main.cpp
     src/Logger.h
 
@@ -29,6 +28,7 @@ target_sources(
 add_subdirectory(Libs)
 
 target_include_directories( ${PROJECT_NAME} PRIVATE
+    ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/Misc
     ${PROJECT_SOURCE_DIR}/src/Usb
@@ -39,6 +39,7 @@ target_link_libraries( ${PROJECT_NAME} PRIVATE
     CMSIS
     HAL
     CustomHID
+    # lwjson
 )
 
 target_compile_definitions( ${PROJECT_NAME} PRIVATE

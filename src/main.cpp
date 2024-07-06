@@ -3,6 +3,7 @@
 #include "UsbDevice.h"
 #include "Logger.h"
 #include "StringBuffer.h"
+#include "lwjson.h"
 
 namespace {
 bool SystemClock_Config(void)
@@ -41,10 +42,48 @@ bool SystemClock_Config(void)
     return true;
 }
 
-static void MX_GPIO_Init(void)
+void MX_GPIO_Init(void)
 {
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+}
+
+enum PanelCommandId {
+    UnknownCommand = 0,
+    EchoCommand = 1,
+};
+
+PanelCommandId getCommandId(lwjson_t &root)
+{
+    const lwjson_token_t *idToken = lwjson_find(&root, "id");
+    if (idToken && idToken->type == LWJSON_TYPE_NUM_INT) {
+        return PanelCommandId(idToken->u.num_int);
+    }
+
+    return UnknownCommand;
+}
+
+StringBuffer<64> getData(lwjson_t &root)
+{
+    const lwjson_token_t *dataToken = lwjson_find(&root, "data");
+    if (dataToken && dataToken->type == LWJSON_TYPE_STRING) {
+        return StringBuffer<64>(dataToken->u.str.token_value, dataToken->u.str.token_value_len);
+    }
+
+    return {};
+}
+
+void initLedPin()
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_13;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 }
 
 } // namespace
@@ -64,19 +103,36 @@ int main(void)
     }
 
     Logger::setPrinter(&usb);
+    initLedPin();
 
-    int i = 0;
+    StringBuffer<64> inBuffer;
 
-    StringBuffer<128> inBuffer;
+    lwjson_token_t tokens[4];
+    lwjson_t lwjson;
+
+    lwjson_init(&lwjson, tokens, 4);
+
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
     while (1) {
+        inBuffer.clear();
         if (usb.popData({inBuffer.data(), inBuffer.size()})) {
-            usb.sendData("Received");
+            if (lwjson_parse(&lwjson, inBuffer.data()) != lwjsonOK) {
+                continue;
+            }
+
+            PanelCommandId id = getCommandId(lwjson);
+
+            switch (id) {
+            case EchoCommand: {
+                StringBuffer<64> data = getData(lwjson);
+                if (!data.empty()) {
+                    usb.sendData(data.data());
+                }
+            } break;
+            default: break;
+            }
         }
-        // LOG("Hello world %i", i);
-        // LOG("Hello world 234 %i", i);
-        // ++i;
-        // HAL_Delay(1000);
     }
 }
 
