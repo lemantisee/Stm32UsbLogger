@@ -4,7 +4,7 @@
 #include <cstring>
 #include <optional>
 
-template <uint32_t N>
+template<uint32_t N>
 class StringBuffer
 {
 public:
@@ -16,14 +16,34 @@ public:
         mCurrentByte = sizeToCopy - 1;
     }
 
-    char &operator[](uint32_t index) {
-        return mBuffer[index];
+    char &operator[](uint32_t index) { return mBuffer[index]; }
+
+    void operator+=(char c)
+    {
+        if (mCurrentByte < mBuffer.size() - 1) {
+            mBuffer[mCurrentByte] = c;
+            ++mCurrentByte;
+            return;
+        }
+    }
+
+    void operator+=(const char *str)
+    {
+        const uint32_t size = strlen(str);
+        if (mCurrentByte + size >= mBuffer.size() - 1) {
+            return;
+        }
+
+        for (uint32_t i = 0; i < size; ++i) {
+            append(char(str[i]));
+        }
+
+        return;
     }
 
     bool append(char c)
     {
-        if (mCurrentByte < mBuffer.size() - 1)
-        {
+        if (mCurrentByte < mBuffer.size() - 1) {
             mBuffer[mCurrentByte] = c;
             ++mCurrentByte;
             return true;
@@ -35,8 +55,7 @@ public:
     bool append(uint16_t c)
     {
         const uint8_t low8bits = c & 0xFF;
-        if (c < 255)
-        {
+        if (c < 255) {
             return append(char(low8bits));
         }
 
@@ -47,8 +66,7 @@ public:
 
     bool append(char *data, uint32_t size)
     {
-        if (mCurrentByte + size >= mBuffer.size() - 1)
-        {
+        if (mCurrentByte + size >= mBuffer.size() - 1) {
             return false;
         }
 
@@ -70,33 +88,23 @@ public:
         mCurrentByte = 0;
     }
 
-    const char *c_str() const
+    const char *c_str() const { return mBuffer.data(); }
+
+    char *data() { return mBuffer.data(); }
+
+    uint32_t size() const { return mBuffer.size(); }
+
+    uint32_t capacity() const { return mCurrentByte; }
+
+    bool empty() const { return mCurrentByte == 0; }
+
+    bool contains(const char *substr) const
     {
-        return mBuffer.data();
-    }
-
-    char *data()
-    {
-        return mBuffer.data();
-    }
-
-    uint32_t size() const {
-        return mBuffer.size();
-    }
-
-    uint32_t capacity() const {
-        return mCurrentByte;
-    }
-
-    bool empty() const {
-        return mCurrentByte == 0;
-    }
-
-    bool contains(const char *substr) const {
         return std::strstr(mBuffer.data(), substr) != nullptr;
     }
 
-    std::optional<uint32_t> find(const char *substr, uint32_t fromPos = 0) const{
+    std::optional<uint32_t> find(const char *substr, uint32_t fromPos = 0) const
+    {
         if (fromPos >= mBuffer.size()) {
             return std::nullopt;
         }

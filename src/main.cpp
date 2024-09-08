@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "StringBuffer.h"
 #include "lwjson.h"
+#include "JsonObject.h"
 
 namespace {
 bool SystemClock_Config(void)
@@ -52,6 +53,8 @@ void MX_GPIO_Init(void)
 enum PanelCommandId {
     UnknownCommand = 0,
     EchoCommand = 1,
+    GetLog = 2,
+    LogUnit = 3,
 };
 
 PanelCommandId getCommandId(lwjson_t &root)
@@ -124,11 +127,12 @@ int main(void)
             PanelCommandId id = getCommandId(lwjson);
 
             switch (id) {
-            case EchoCommand: {
-                StringBuffer<64> data = getData(lwjson);
-                if (!data.empty()) {
-                    usb.sendData(data.data());
-                }
+            case GetLog: {
+                JsonObject j;
+                j.add("id", LogUnit);
+                j.add("d", "test");
+                StringBuffer<64> &jBuffer = j.dump();
+                usb.sendData(jBuffer.data());
             } break;
             default: break;
             }

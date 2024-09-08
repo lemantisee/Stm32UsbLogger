@@ -10,6 +10,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/main.cpp
     src/Logger.h
 
+    src/Misc/JsonObject.h src/Misc/JsonObject.cpp
     src/Misc/StringBuffer.h
 
     src/Usb/CustomHid.h src/Usb/CustomHid.cpp
