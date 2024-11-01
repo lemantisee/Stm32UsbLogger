@@ -26,7 +26,7 @@ bool UsbDevice::sendData(const char *data)
 
 bool UsbDevice::popData(std::span<char> buffer) { return mCustomHid.popReport(buffer); }
 
-void UsbDevice::print(const char *str)
-{
-    mCustomHid.sendReport(&mHandle, {(uint8_t *)str, strlen(str)});
-}
+// void UsbDevice::print(const char *str)
+// {
+//     mCustomHid.sendReport(&mHandle, {(uint8_t *)str, strlen(str)});
+// }

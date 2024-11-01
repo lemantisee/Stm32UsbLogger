@@ -5,15 +5,47 @@
 #include <optional>
 
 template<uint32_t N>
-class StringBuffer
+class SString
 {
 public:
-    StringBuffer() = default;
-    StringBuffer(const char *data, uint32_t size)
+    SString() = default;
+    SString(const char *data, uint32_t size)
     {
         size_t sizeToCopy = std::min<size_t>(mBuffer.size(), size);
         std::memcpy(mBuffer.data(), data, sizeToCopy);
         mCurrentByte = sizeToCopy - 1;
+    }
+
+    SString(const SString &rvl) 
+    {
+        *this = rvl;
+    }
+
+    SString(SString &&rvl)
+    {
+        *this = std::move(rvl);
+    }
+
+    SString &operator=(SString &&rvl)
+    {
+        if (this == &rvl) {
+            return *this;
+        }
+        mBuffer = std::move(rvl.mBuffer);
+        mCurrentByte = rvl.mCurrentByte;
+
+        rvl.mCurrentByte = 0;
+        rvl.mBuffer.fill(0);
+
+        return *this;
+    }
+
+    SString &operator=(const SString &rvl)
+    {
+        mBuffer = rvl.mBuffer;
+        mCurrentByte = rvl.mCurrentByte;
+
+        return *this;
     }
 
     char &operator[](uint32_t index) { return mBuffer[index]; }
@@ -92,9 +124,9 @@ public:
 
     char *data() { return mBuffer.data(); }
 
-    uint32_t size() const { return mBuffer.size(); }
+    uint32_t capacity() const { return mBuffer.size(); }
 
-    uint32_t capacity() const { return mCurrentByte; }
+    uint32_t size() const { return mCurrentByte; }
 
     bool empty() const { return mCurrentByte == 0; }
 

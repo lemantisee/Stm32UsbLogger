@@ -5,14 +5,12 @@
 #include "CustomHid.h"
 #include "Logger.h"
 
-class UsbDevice : public Printer
+class UsbDevice
 {
 public:
     bool init();
     bool sendData(const char *data);
     bool popData(std::span<char> buffer);
-
-    void print(const char *str) override;
 
 private:
     UsbDriverF103 mDriver;

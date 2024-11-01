@@ -26,11 +26,11 @@ namespace {
 
 bool CustomHid::popReport(std::span<char> buffer)
 {
-    if (mBuffer.capacity() == 0) {
+    if (mBuffer.size() == 0) {
         return false;
     }
 
-    const uint32_t dataSize = std::min<uint32_t>(mBuffer.capacity(), buffer.size());
+    const uint32_t dataSize = std::min<uint32_t>(mBuffer.size(), buffer.size());
 
     std::memcpy(buffer.data(), mBuffer.data(), dataSize);
     mBuffer.clear();
@@ -39,7 +39,7 @@ bool CustomHid::popReport(std::span<char> buffer)
 
 void CustomHid::onReceive(uint8_t *state, uint32_t size)
 {
-	if (mBuffer.size() >= size) {
+	if (mBuffer.capacity() >= size) {
 		mBuffer.clear();
 		mBuffer.append(state, size);
 	}

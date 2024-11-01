@@ -11,7 +11,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/Logger.h
 
     src/Misc/JsonObject.h src/Misc/JsonObject.cpp
-    src/Misc/StringBuffer.h
+    src/Misc/SString.h
 
     src/Usb/CustomHid.h src/Usb/CustomHid.cpp
     src/Usb/UsbDriverF103.h src/Usb/UsbDriverF103.cpp
@@ -40,7 +40,6 @@ target_link_libraries( ${PROJECT_NAME} PRIVATE
     CMSIS
     HAL
     CustomHID
-    # lwjson
 )
 
 target_compile_definitions( ${PROJECT_NAME} PRIVATE

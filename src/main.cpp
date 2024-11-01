@@ -2,11 +2,15 @@
 
 #include "UsbDevice.h"
 #include "Logger.h"
-#include "StringBuffer.h"
-#include "lwjson.h"
+#include "String.h"
 #include "JsonObject.h"
 
 namespace {
+
+UsbDevice usbHost;
+bool enableLogs = false;
+
+
 bool SystemClock_Config(void)
 {
     RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -53,29 +57,10 @@ void MX_GPIO_Init(void)
 enum PanelCommandId {
     UnknownCommand = 0,
     EchoCommand = 1,
-    GetLog = 2,
-    LogUnit = 3,
+    EnableLog = 2,
+    GetLog = 3,
+    LogUnit = 4,
 };
-
-PanelCommandId getCommandId(lwjson_t &root)
-{
-    const lwjson_token_t *idToken = lwjson_find(&root, "id");
-    if (idToken && idToken->type == LWJSON_TYPE_NUM_INT) {
-        return PanelCommandId(idToken->u.num_int);
-    }
-
-    return UnknownCommand;
-}
-
-StringBuffer<64> getData(lwjson_t &root)
-{
-    const lwjson_token_t *dataToken = lwjson_find(&root, "data");
-    if (dataToken && dataToken->type == LWJSON_TYPE_STRING) {
-        return StringBuffer<64>(dataToken->u.str.token_value, dataToken->u.str.token_value_len);
-    }
-
-    return {};
-}
 
 void initLedPin()
 {
@@ -89,6 +74,25 @@ void initLedPin()
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 }
 
+void processUsbCmd(const SString<64> &buffer)
+{
+    JsonObject inMessage(buffer);
+
+    PanelCommandId id = PanelCommandId(inMessage.getInt("id", UnknownCommand));
+
+    switch (id) {
+    case GetLog: {
+        JsonObject j;
+        j.add("id", LogUnit);
+        j.add("d", "test");
+        SString<64> &jBuffer = j.dump();
+        usbHost.sendData(jBuffer.data());
+    } break;
+    case EnableLog: enableLogs = inMessage.getBool("s", enableLogs); break;
+    default: break;
+    }
+}
+
 } // namespace
 
 int main(void)
@@ -100,59 +104,23 @@ int main(void)
 
     MX_GPIO_Init();
 
-    UsbDevice usb;
-    if (!usb.init()) {
+   
+    if (!usbHost.init()) {
         return 1;
     }
 
-    Logger::setPrinter(&usb);
     initLedPin();
 
-    StringBuffer<64> inBuffer;
-
-    lwjson_token_t tokens[4];
-    lwjson_t lwjson;
-
-    lwjson_init(&lwjson, tokens, 4);
+    SString<64> inBuffer;
 
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
     while (1) {
         inBuffer.clear();
-        if (usb.popData({inBuffer.data(), inBuffer.size()})) {
-            if (lwjson_parse(&lwjson, inBuffer.data()) != lwjsonOK) {
-                continue;
-            }
-
-            PanelCommandId id = getCommandId(lwjson);
-
-            switch (id) {
-            case GetLog: {
-                JsonObject j;
-                j.add("id", LogUnit);
-                j.add("d", "test");
-                StringBuffer<64> &jBuffer = j.dump();
-                usb.sendData(jBuffer.data());
-            } break;
-            default: break;
-            }
+        if (!usbHost.popData({inBuffer.data(), inBuffer.capacity()})) {
+            continue;
         }
+
+        processUsbCmd(inBuffer);
     }
 }
-
-#ifdef USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
-    /* USER CODE BEGIN 6 */
-    /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-    /* USER CODE END 6 */
-}
-#endif /* USE_FULL_ASSERT */

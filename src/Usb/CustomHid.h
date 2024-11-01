@@ -2,7 +2,7 @@
 
 #include "UsbCustomHid.h"
 
-#include "StringBuffer.h"
+#include "SString.h"
 
 class CustomHid : public UsbCustomHid
 {
@@ -14,5 +14,5 @@ protected:
     uint8_t *getReportDescriptor() const override;
 
 private:
-    StringBuffer<128> mBuffer;
+    SString<128> mBuffer;
 };
