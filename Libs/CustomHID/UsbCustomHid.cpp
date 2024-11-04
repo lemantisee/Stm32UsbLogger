@@ -303,7 +303,7 @@ std::span<uint8_t> UsbCustomHid::getDeviceQualifierDescriptor()
     return std::span(qualifierDescriptor);
 }
 
-bool UsbCustomHid::sendReport(UsbHandle *pdev, std::span<uint8_t> data)
+bool UsbCustomHid::sendReport(UsbHandle *pdev, const std::span<uint8_t> &data)
 {
     if (!pdev->isConfigured()) {
         return false;

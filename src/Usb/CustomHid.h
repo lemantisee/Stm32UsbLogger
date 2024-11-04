@@ -7,7 +7,7 @@
 class CustomHid : public UsbCustomHid
 {
 public:
-    bool popReport(std::span<char> buffer);
+    int popReport(std::span<char> buffer);
 
 protected:
     void onReceive(uint8_t *state, uint32_t size) override;

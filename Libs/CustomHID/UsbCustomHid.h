@@ -23,7 +23,7 @@ public:
     std::span<uint8_t> getOtherSpeedConfigDescriptor() override;
     std::span<uint8_t> getDeviceQualifierDescriptor() override;
 
-    bool sendReport(UsbHandle *pdev, std::span<uint8_t> data);
+    bool sendReport(UsbHandle *pdev, const std::span<uint8_t> &data);
 
     static const uint8_t endpointInAddress = 0x81;
     static const uint8_t endpointOutAddress = 0x01;

@@ -1,13 +1,13 @@
 #pragma once
 
 #include <array>
-#include <stdio.h>
+#include <cstdio>
 #include <cstring>
 
-#include "String.h"
+#include "SString.h"
 #include "RingBuffer.h"
 
-#define FILENAME strrchr("\\" __FILE__, '\\') + 1
+#define FILENAME strrchr("/" __FILE__, '/') + 1
 
 #define LOG(msg, ...) Logger::log(Logger::Info, FILENAME, __LINE__, msg, ##__VA_ARGS__)
 #define LOG_ERROR(msg, ...) Logger::log(Logger::Error, FILENAME, __LINE__, msg, ##__VA_ARGS__)
@@ -26,10 +26,16 @@ public:
             return;
         }
 
-        const String256 &str = stringFormat(fmt, args...);
+        String256 header = getInstance().createHeader(file, line);
+        String256 &str = getInstance().stringFormat(fmt, args...);
+        if (str.size() + header.size() + 1 >= str.capacity()) {
+            return;
+        }
+
+        str = header + str + "\n";
+
         if (str.size() <= getInstance().mBufferStringSize) {
-            String48 str(str.c_str(), 48);
-            getInstance().mBuffer.append(std::move(str));
+            getInstance().mBuffer.append(String48(str.c_str(), 48));
             return;
         }
 
@@ -42,6 +48,21 @@ public:
 
     static void enable(bool state) { getInstance().mEnabled = state; }
 
+    static String48 pop()
+    {
+        if (!getInstance().mEnabled) {
+            return {};
+        }
+
+        if (getInstance().mBuffer.empty()) {
+            return {};
+        }
+
+        return getInstance().mBuffer.pop();
+    }
+
+    static bool empty() { return getInstance().mBuffer.empty(); }
+
 private:
     Logger() = default;
     ~Logger() = default;
@@ -53,12 +74,13 @@ private:
     }
 
     template<typename... Args>
-    const String256 &stringFormat(const char *fmt, Args... args)
+    String256 &stringFormat(const char *fmt, Args... args)
     {
         mString.clear();
-        int size = snprintf(nullptr, 0, fmt, args...) + 1; // Extra space for '\0'
+        int size = std::snprintf(nullptr, 0, fmt, args...) + 1; // Extra space for '\0'
         if (size > 0 || size < mString.capacity()) {
-            snprintf(mString.data(), size, fmt, args...);
+            mString.resize(size - 1);
+            std::snprintf(mString.data(), size, fmt, args...);
         }
 
         return mString;
@@ -77,16 +99,24 @@ private:
 
             const size_t sizeToCopy = strSize < mBufferStringSize ? strSize : mBufferStringSize;
 
-            token = String48(str.c_str(), sizeToCopy);
+            token = String48(ptr, sizeToCopy);
             strSize -= sizeToCopy;
+            ptr += sizeToCopy;
         }
 
         return strings;
+    }
+
+    String256 createHeader(const char *file, int line) const
+    {
+        String256 str;
+        str.append("[").append(file).append(":").appendNumber(line).append("]");
+        return str;
     }
 
     const uint8_t mBufferStringSize = 48;
 
     RingBuffer<128, 48> mBuffer;
     String256 mString;
-    bool mEnabled = false;
+    bool mEnabled = true;
 };

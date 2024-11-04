@@ -1,6 +1,6 @@
 #pragma once
 
-#include "String.h"
+#include "SString.h"
 
 template<uint32_t BufferSize, uint32_t StringSize>
 class RingBuffer

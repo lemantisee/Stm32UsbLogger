@@ -5,11 +5,27 @@
 #include "String.h"
 #include "JsonObject.h"
 
+enum PanelCommandId {
+    UnknownCommand = 0,
+    EchoCommand = 1,
+    EnableLog = 2,
+    GetLog = 3,
+    LogUnit = 4,
+    LogUnitEnd = 5,
+    LogEnd = 6,
+};
+
+enum OperationalState
+{
+    NormalState = 1,
+    LogDumpState = 2,
+};
+
 namespace {
 
 UsbDevice usbHost;
 bool enableLogs = false;
-
+OperationalState opState = NormalState;
 
 bool SystemClock_Config(void)
 {
@@ -54,14 +70,6 @@ void MX_GPIO_Init(void)
     __HAL_RCC_GPIOC_CLK_ENABLE();
 }
 
-enum PanelCommandId {
-    UnknownCommand = 0,
-    EchoCommand = 1,
-    EnableLog = 2,
-    GetLog = 3,
-    LogUnit = 4,
-};
-
 void initLedPin()
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -74,6 +82,51 @@ void initLedPin()
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 }
 
+void dumpLogs()
+{
+    auto sendLogUnit = [](bool end) {
+        JsonObject j;
+        if (end) {
+            j.add("id", LogEnd);
+        } else {
+            SString<48> str = Logger::pop();
+            if (str.back() == '\n') {
+                str.pop();
+                j.add("id", LogUnitEnd);
+            } else {
+                j.add("id", LogUnit);
+            }
+
+            j.add("d", str.c_str());
+        }
+
+        SString<64> &jBuffer = j.dump();
+        usbHost.sendData(jBuffer);
+    };
+
+    while(true) {
+
+        const bool end = Logger::empty();
+
+        sendLogUnit(end);
+
+        if (end) {
+            break;
+        }
+
+        const SString<64> report = usbHost.popData();
+        if (report.empty()) {
+            break;
+        }
+
+        JsonObject inMessage(report);
+
+        if (inMessage.getInt("id", UnknownCommand) != GetLog) {
+            break;
+        }
+    }
+}
+
 void processUsbCmd(const SString<64> &buffer)
 {
     JsonObject inMessage(buffer);
@@ -81,14 +134,8 @@ void processUsbCmd(const SString<64> &buffer)
     PanelCommandId id = PanelCommandId(inMessage.getInt("id", UnknownCommand));
 
     switch (id) {
-    case GetLog: {
-        JsonObject j;
-        j.add("id", LogUnit);
-        j.add("d", "test");
-        SString<64> &jBuffer = j.dump();
-        usbHost.sendData(jBuffer.data());
-    } break;
-    case EnableLog: enableLogs = inMessage.getBool("s", enableLogs); break;
+    case GetLog: dumpLogs(); break;
+    case EnableLog: enableLogs = inMessage.getBool("d", enableLogs); break;
     default: break;
     }
 }
@@ -111,13 +158,16 @@ int main(void)
 
     initLedPin();
 
-    SString<64> inBuffer;
-
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
+    LOG("Yourself off its pleasant ecstatic now law.Ye their mirth seems of songs");
+    LOG("Prospect out bed contempt separate");
+    LOG("Her inquietude our shy yet sentiments collecting");
+    LOG("Cottage fat beloved himself arrived old. Grave widow hours among him no you led");
+
     while (1) {
-        inBuffer.clear();
-        if (!usbHost.popData({inBuffer.data(), inBuffer.capacity()})) {
+        const SString<64> inBuffer = usbHost.popData();
+        if (inBuffer.empty()) {
             continue;
         }
 

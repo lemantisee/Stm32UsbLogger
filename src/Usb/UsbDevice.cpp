@@ -19,12 +19,18 @@ bool UsbDevice::init()
     return mHandle.start();
 }
 
-bool UsbDevice::sendData(const char *data)
+bool UsbDevice::sendData(const SString<64> &data)
 {
-    return mCustomHid.sendReport(&mHandle, {(uint8_t *)data, strlen(data)});
+    return mCustomHid.sendReport(&mHandle, {(uint8_t *)(data.c_str()), data.size()});
 }
 
-bool UsbDevice::popData(std::span<char> buffer) { return mCustomHid.popReport(buffer); }
+SString<64> UsbDevice::popData() { 
+    SString<64> data;
+    int size = mCustomHid.popReport({data.data(), data.capacity()});
+    data.resize(size);
+
+    return data;
+}
 
 // void UsbDevice::print(const char *str)
 // {

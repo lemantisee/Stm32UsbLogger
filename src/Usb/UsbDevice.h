@@ -9,8 +9,8 @@ class UsbDevice
 {
 public:
     bool init();
-    bool sendData(const char *data);
-    bool popData(std::span<char> buffer);
+    bool sendData(const SString<64> &data);
+    SString<64> popData();
 
 private:
     UsbDriverF103 mDriver;

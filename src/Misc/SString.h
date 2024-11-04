@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstring>
+#include <cstdio>
 #include <optional>
 
 template<uint32_t N>
@@ -11,12 +12,17 @@ public:
     SString() = default;
     SString(const char *data, uint32_t size)
     {
-        size_t sizeToCopy = std::min<size_t>(mBuffer.size(), size);
+        size_t sizeToCopy = std::min<size_t>(capacity(), size);
         std::memcpy(mBuffer.data(), data, sizeToCopy);
-        mCurrentByte = sizeToCopy - 1;
+        mCurrentByte = sizeToCopy;
     }
 
-    SString(const SString &rvl) 
+    SString(const char *str)
+    {
+        *this = str;
+    }
+
+    SString(const SString &rvl)
     {
         *this = rvl;
     }
@@ -42,46 +48,74 @@ public:
 
     SString &operator=(const SString &rvl)
     {
+        if (this == &rvl) {
+            return *this;
+        }
+
         mBuffer = rvl.mBuffer;
         mCurrentByte = rvl.mCurrentByte;
 
         return *this;
     }
 
+    SString &operator=(const char *str)
+    {
+        if (mBuffer.data() == str) {
+            return *this;
+        }
+
+        clear();
+        append(str);
+        return *this;
+    }
+
     char &operator[](uint32_t index) { return mBuffer[index]; }
+
+    SString &operator+(const SString &rvl)
+    {
+        if (size() + rvl.size() >= capacity()) {
+            return *this;
+        }
+
+        std::memcpy(mBuffer.data() + mCurrentByte, rvl.mBuffer.data(), rvl.mCurrentByte);
+
+        mCurrentByte += rvl.mCurrentByte;
+
+        return *this;
+    }
 
     void operator+=(char c)
     {
-        if (mCurrentByte < mBuffer.size() - 1) {
-            mBuffer[mCurrentByte] = c;
-            ++mCurrentByte;
-            return;
-        }
+        append(c);
     }
 
     void operator+=(const char *str)
     {
+        append(str);
+    }
+
+    SString &append(char c)
+    {
+        if (mCurrentByte < capacity() - 1) {
+            mBuffer[mCurrentByte] = c;
+            ++mCurrentByte;
+        }
+
+        return *this;
+    }
+
+    SString &append(const char *str)
+    {
         const uint32_t size = strlen(str);
-        if (mCurrentByte + size >= mBuffer.size() - 1) {
-            return;
+        if (mCurrentByte + size >= capacity() - 1) {
+            return *this;
         }
 
         for (uint32_t i = 0; i < size; ++i) {
             append(char(str[i]));
         }
 
-        return;
-    }
-
-    bool append(char c)
-    {
-        if (mCurrentByte < mBuffer.size() - 1) {
-            mBuffer[mCurrentByte] = c;
-            ++mCurrentByte;
-            return true;
-        }
-
-        return false;
+        return *this;
     }
 
     bool append(uint16_t c)
@@ -98,7 +132,7 @@ public:
 
     bool append(char *data, uint32_t size)
     {
-        if (mCurrentByte + size >= mBuffer.size() - 1) {
+        if (mCurrentByte + size >= capacity() - 1) {
             return false;
         }
 
@@ -114,17 +148,40 @@ public:
         return append(reinterpret_cast<char *>(data), size);
     }
 
+    SString &appendNumber(int value)
+    {
+        int size = std::snprintf(nullptr, 0, "%i", value) + 1; // Extra space for '\0'
+        if (size > 0 || size + mCurrentByte < capacity()) {
+            snprintf(mBuffer.data() + mCurrentByte, size, "%i", value);
+            mCurrentByte += size - 1;
+        }
+
+        return *this;
+    }
+
     void clear()
     {
         mBuffer.fill(0);
         mCurrentByte = 0;
     }
 
+    char pop()
+    {
+        char c = mBuffer[mCurrentByte - 1];
+        mBuffer[mCurrentByte - 1] = 0;
+        --mCurrentByte;
+        return c;
+    }
+
+    char back() const { return mBuffer[mCurrentByte - 1]; }
+
+    void resize(uint32_t size) { mCurrentByte = size; }
+
     const char *c_str() const { return mBuffer.data(); }
 
     char *data() { return mBuffer.data(); }
 
-    uint32_t capacity() const { return mBuffer.size(); }
+    uint32_t capacity() const { return mBuffer.size() - 1; }
 
     uint32_t size() const { return mCurrentByte; }
 
@@ -151,5 +208,5 @@ public:
 
 private:
     uint32_t mCurrentByte = 0;
-    std::array<char, N> mBuffer = {};
+    std::array<char, N + 1> mBuffer = {};
 };
