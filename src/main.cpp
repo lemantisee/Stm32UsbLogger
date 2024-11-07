@@ -2,30 +2,15 @@
 
 #include "UsbDevice.h"
 #include "Logger.h"
-#include "String.h"
 #include "JsonObject.h"
-
-enum PanelCommandId {
-    UnknownCommand = 0,
-    EchoCommand = 1,
-    EnableLog = 2,
-    GetLog = 3,
-    LogUnit = 4,
-    LogUnitEnd = 5,
-    LogEnd = 6,
-};
-
-enum OperationalState
-{
-    NormalState = 1,
-    LogDumpState = 2,
-};
+#include "MonitorCommand.h"
+#include "LogDump.h"
 
 namespace {
 
 UsbDevice usbHost;
 bool enableLogs = false;
-OperationalState opState = NormalState;
+LogDump logDumper;
 
 bool SystemClock_Config(void)
 {
@@ -82,59 +67,14 @@ void initLedPin()
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 }
 
-void dumpLogs()
-{
-    auto sendLogUnit = [](bool end) {
-        JsonObject j;
-        if (end) {
-            j.add("id", LogEnd);
-        } else {
-            SString<48> str = Logger::pop();
-            if (str.back() == '\n') {
-                str.pop();
-                j.add("id", LogUnitEnd);
-            } else {
-                j.add("id", LogUnit);
-            }
-
-            j.add("d", str.c_str());
-        }
-
-        SString<64> &jBuffer = j.dump();
-        usbHost.sendData(jBuffer);
-    };
-
-    while(true) {
-
-        const bool end = Logger::empty();
-
-        sendLogUnit(end);
-
-        if (end) {
-            break;
-        }
-
-        const SString<64> report = usbHost.popData();
-        if (report.empty()) {
-            break;
-        }
-
-        JsonObject inMessage(report);
-
-        if (inMessage.getInt("id", UnknownCommand) != GetLog) {
-            break;
-        }
-    }
-}
-
 void processUsbCmd(const SString<64> &buffer)
 {
     JsonObject inMessage(buffer);
 
-    PanelCommandId id = PanelCommandId(inMessage.getInt("id", UnknownCommand));
+    MonitorCommandId id = MonitorCommandId(inMessage.getInt("id", UnknownCommand));
 
     switch (id) {
-    case GetLog: dumpLogs(); break;
+    case GetLog: logDumper.dump(usbHost); break;
     case EnableLog: enableLogs = inMessage.getBool("d", enableLogs); break;
     default: break;
     }
@@ -151,7 +91,6 @@ int main(void)
 
     MX_GPIO_Init();
 
-   
     if (!usbHost.init()) {
         return 1;
     }
@@ -165,12 +104,21 @@ int main(void)
     LOG("Her inquietude our shy yet sentiments collecting");
     LOG("Cottage fat beloved himself arrived old. Grave widow hours among him no you led");
 
+    int count = 0;
+    int logNum = 0;
+
     while (1) {
-        const SString<64> inBuffer = usbHost.popData();
-        if (inBuffer.empty()) {
-            continue;
+        if (count == 10000) {
+            ++logNum;
+            count = 0;
+            LOG("Log line %i", logNum);
         }
 
-        processUsbCmd(inBuffer);
+        ++count;
+
+        const SString<64> inBuffer = usbHost.popData();
+        if (!inBuffer.empty()) {
+            processUsbCmd(inBuffer);
+        }
     }
 }

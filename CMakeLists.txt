@@ -8,7 +8,9 @@ add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME} PRIVATE
     src/main.cpp
+    src/MonitorCommand.h
     src/Logger.h
+    src/LogDump.h src/LogDump.cpp
 
     src/Misc/JsonObject.h src/Misc/JsonObject.cpp
     src/Misc/SString.h

@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cstdio>
 #include <optional>
+#include <cstdint>
 
 template<uint32_t N>
 class SString

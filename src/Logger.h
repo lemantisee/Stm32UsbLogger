@@ -35,7 +35,7 @@ public:
         str = header + str + "\n";
 
         if (str.size() <= getInstance().mBufferStringSize) {
-            getInstance().mBuffer.append(String48(str.c_str(), 48));
+            getInstance().mBuffer.append(String48(str.c_str(), str.size()));
             return;
         }
 
