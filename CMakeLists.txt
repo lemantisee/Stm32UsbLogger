@@ -42,7 +42,8 @@ target_link_libraries( ${PROJECT_NAME} PRIVATE
     CMSIS
     HAL
     CustomHID
-)
+    lwjson
+    )
 
 target_compile_definitions( ${PROJECT_NAME} PRIVATE
     "$<$<CONFIG:Debug>:DEBUG>"
